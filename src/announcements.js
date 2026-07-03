@@ -5,7 +5,7 @@ import { EmbedBuilder } from 'discord.js';
 import { db } from './database/database.js';
 
 const parser = new Parser();
-const ANNOUNCEMENT_CHANNEL_ID = '1338098698042736711';
+const ANNOUNCEMENT_CHANNEL_ID = '1294799305357660214';
 
 let isAnnouncementsStarted = false;
 let twitchAccessToken = null;

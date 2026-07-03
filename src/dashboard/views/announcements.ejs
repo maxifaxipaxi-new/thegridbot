@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,12 +21,16 @@
             --youtube: #FF0000;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
-            background-image: 
+            background-image:
                 radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.1), transparent 40%),
                 radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.1), transparent 40%);
             background-attachment: fixed;
@@ -45,8 +50,17 @@
             align-items: center;
         }
 
-        .nav-brand { font-weight: 800; font-size: 20px; display: flex; align-items: center; gap: 12px; }
-        .nav-brand span { color: var(--accent-color); }
+        .nav-brand {
+            font-weight: 800;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-brand span {
+            color: var(--accent-color);
+        }
 
         .btn {
             padding: 8px 16px;
@@ -62,12 +76,36 @@
             gap: 8px;
         }
 
-        .btn-secondary { background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid var(--glass-border); }
-        .btn-secondary:hover { background: rgba(255, 255, 255, 0.2); }
-        .btn-primary { background: var(--accent-color); color: white; }
-        .btn-primary:hover { background: #ea580c; }
-        .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 10px; font-size: 12px; }
-        .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #ea580c;
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
 
         .main-content {
             flex: 1;
@@ -77,9 +115,18 @@
             width: 100%;
         }
 
-        .header { margin-bottom: 32px; }
-        .header h1 { font-size: 32px; margin-bottom: 8px; }
-        .header p { color: var(--text-muted); }
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: var(--text-muted);
+        }
 
         .grid {
             display: grid;
@@ -103,12 +150,24 @@
             border-bottom: 1px solid var(--glass-border);
         }
 
-        .panel-header h2 { font-size: 20px; }
-        
-        .twitch-icon { color: var(--twitch); font-size: 24px; }
-        .youtube-icon { color: var(--youtube); font-size: 24px; }
+        .panel-header h2 {
+            font-size: 20px;
+        }
 
-        .list-group { margin-bottom: 24px; }
+        .twitch-icon {
+            color: var(--twitch);
+            font-size: 24px;
+        }
+
+        .youtube-icon {
+            color: var(--youtube);
+            font-size: 24px;
+        }
+
+        .list-group {
+            margin-bottom: 24px;
+        }
+
         .list-item {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--glass-border);
@@ -119,23 +178,32 @@
             align-items: center;
             margin-bottom: 8px;
         }
-        
-        .empty-state { color: var(--text-muted); font-style: italic; font-size: 14px; }
+
+        .empty-state {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 14px;
+        }
 
         .add-form {
             display: flex;
             gap: 8px;
         }
+
         .add-form input {
             flex: 1;
-            background: rgba(0,0,0,0.2);
+            background: rgba(0, 0, 0, 0.2);
             border: 1px solid var(--glass-border);
             border-radius: 8px;
             padding: 8px 12px;
             color: white;
             font-family: inherit;
         }
-        .add-form input:focus { outline: none; border-color: var(--accent-color); }
+
+        .add-form input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
 
         footer {
             padding: 20px;
@@ -146,9 +214,14 @@
             border-top: 1px solid var(--glass-border);
             margin-top: auto;
         }
-        .made-by { font-weight: 600; color: var(--accent-color); }
+
+        .made-by {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
     </style>
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-brand">
@@ -160,7 +233,8 @@
     <main class="main-content">
         <div class="header">
             <h1>📢 Announcements System</h1>
-            <p>Verwalte die Twitch-Streamer und YouTube-Kanäle, die automatisch in Kanal <code>1338098698042736711</code> angekündigt werden sollen.</p>
+            <p>Verwalte die Twitch-Streamer und YouTube-Kanäle, die automatisch in Kanal
+                <code>1294799305357660214</code> angekündigt werden sollen.</p>
         </div>
 
         <div class="grid">
@@ -170,22 +244,24 @@
                     <span class="twitch-icon">🟪</span>
                     <h2>Twitch Livestreams</h2>
                 </div>
-                
+
                 <div class="list-group">
-                    <% if (config.twitch.length === 0) { %>
+                    <% if (config.twitch.length===0) { %>
                         <div class="empty-state">Keine Twitch-Streamer eingetragen.</div>
-                    <% } else { %>
-                        <% config.twitch.forEach(function(username) { %>
-                            <div class="list-item">
-                                <span><%= username %></span>
-                                <form action="/dashboard/announcements/remove" method="POST" style="margin:0;">
-                                    <input type="hidden" name="type" value="twitch">
-                                    <input type="hidden" name="id" value="<%= username %>">
-                                    <button type="submit" class="btn btn-danger">Löschen</button>
-                                </form>
-                            </div>
-                        <% }); %>
-                    <% } %>
+                        <% } else { %>
+                            <% config.twitch.forEach(function(username) { %>
+                                <div class="list-item">
+                                    <span>
+                                        <%= username %>
+                                    </span>
+                                    <form action="/dashboard/announcements/remove" method="POST" style="margin:0;">
+                                        <input type="hidden" name="type" value="twitch">
+                                        <input type="hidden" name="id" value="<%= username %>">
+                                        <button type="submit" class="btn btn-danger">Löschen</button>
+                                    </form>
+                                </div>
+                                <% }); %>
+                                    <% } %>
                 </div>
 
                 <form action="/dashboard/announcements/add" method="POST" class="add-form">
@@ -201,22 +277,24 @@
                     <span class="youtube-icon">🟥</span>
                     <h2>YouTube Videos</h2>
                 </div>
-                
+
                 <div class="list-group">
-                    <% if (config.youtube.length === 0) { %>
+                    <% if (config.youtube.length===0) { %>
                         <div class="empty-state">Keine YouTube-Kanäle eingetragen.</div>
-                    <% } else { %>
-                        <% config.youtube.forEach(function(channelId) { %>
-                            <div class="list-item">
-                                <span style="font-family: monospace; font-size: 12px;"><%= channelId %></span>
-                                <form action="/dashboard/announcements/remove" method="POST" style="margin:0;">
-                                    <input type="hidden" name="type" value="youtube">
-                                    <input type="hidden" name="id" value="<%= channelId %>">
-                                    <button type="submit" class="btn btn-danger">Löschen</button>
-                                </form>
-                            </div>
-                        <% }); %>
-                    <% } %>
+                        <% } else { %>
+                            <% config.youtube.forEach(function(channelId) { %>
+                                <div class="list-item">
+                                    <span style="font-family: monospace; font-size: 12px;">
+                                        <%= channelId %>
+                                    </span>
+                                    <form action="/dashboard/announcements/remove" method="POST" style="margin:0;">
+                                        <input type="hidden" name="type" value="youtube">
+                                        <input type="hidden" name="id" value="<%= channelId %>">
+                                        <button type="submit" class="btn btn-danger">Löschen</button>
+                                    </form>
+                                </div>
+                                <% }); %>
+                                    <% } %>
                 </div>
 
                 <form action="/dashboard/announcements/add" method="POST" class="add-form">
@@ -224,7 +302,8 @@
                     <input type="text" name="id" placeholder="YouTube Channel ID (z.B. UC...)" required>
                     <button type="submit" class="btn btn-primary">Hinzufügen</button>
                 </form>
-                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Achtung: Bitte die genaue <b>Channel ID</b> eintragen (beginnt meistens mit UC). Nicht das @Handle!</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Achtung: Bitte die genaue
+                    <b>Channel ID</b> eintragen (beginnt meistens mit UC). Nicht das @Handle!</p>
             </div>
         </div>
     </main>
@@ -233,4 +312,5 @@
         made by <span class="made-by">MaxiFaxiPaxi</span>
     </footer>
 </body>
+
 </html>
