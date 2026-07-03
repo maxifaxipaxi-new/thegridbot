@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datenschutzerklärung - The Grid Bot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --accent-color: #f97316;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 40px 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: var(--accent-color); margin-bottom: 20px; }
+        h2 { margin-top: 30px; margin-bottom: 10px; font-size: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px; }
+        h3 { margin-top: 20px; font-size: 16px; color: var(--text-main); }
+        p, ul { color: var(--text-muted); margin-bottom: 16px; }
+        li { margin-bottom: 6px; }
+        a { color: var(--accent-color); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .back-btn { display: inline-block; margin-bottom: 30px; color: var(--text-main); background: var(--surface-color); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--glass-border); }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-btn">← Zurück zur Startseite</a>
+    <h1>Datenschutzerklärung</h1>
+    
+    <h2>1. Datenschutz auf einen Blick</h2>
+    <h3>Allgemeine Hinweise</h3>
+    <p>Die folgenden Hinweise geben einen einfachen Überblick darüber, was mit Ihren personenbezogenen Daten passiert, wenn Sie diese Website besuchen oder unseren Discord Bot nutzen. Personenbezogene Daten sind alle Daten, mit denen Sie persönlich identifiziert werden können.</p>
+
+    <h2>2. Datenerfassung auf dieser Website (Dashboard)</h2>
+    <h3>Cookies & Sessions</h3>
+    <p>Unsere Internetseiten und das Dashboard verwenden teilweise sogenannte Cookies oder Session-Storage. Diese dienen dazu, das Login-System (Discord OAuth2) aufrechtzuerhalten. Es werden ausschließlich essenzielle Session-Cookies verwendet, um Ihre laufende Sitzung nach dem Login zu speichern.</p>
+    
+    <h3>Server-Log-Dateien</h3>
+    <p>Der Provider der Seiten (bzw. unser Webserver) erhebt und speichert automatisch Informationen in so genannten Server-Log-Dateien, die Ihr Browser automatisch an uns übermittelt. Dies sind i.d.R.: Browsertyp/-version, verwendetes Betriebssystem, Referrer URL, Hostname des zugreifenden Rechners, Uhrzeit der Serveranfrage, IP-Adresse. Eine Zusammenführung dieser Daten mit anderen Datenquellen wird nicht vorgenommen.</p>
+
+    <h2>3. Datenerfassung durch den Discord Bot</h2>
+    <h3>Welche Daten werden gespeichert?</h3>
+    <p>Wenn Sie den Bot auf einem Discord-Server nutzen und aktiv Befehle wie <code>/geburtstag</code> verwenden, speichert der Bot folgende Daten in einer lokalen Datenbank:</p>
+    <ul>
+        <li>Ihre eindeutige Discord-User-ID (zur Zuordnung)</li>
+        <li>Ihr eingegebenes Geburtsdatum (Tag und Monat)</li>
+        <li>Die Server-ID (Guild ID), auf der der Befehl ausgeführt wurde</li>
+    </ul>
+
+    <h3>Zweck der Speicherung</h3>
+    <p>Die Speicherung erfolgt ausschließlich zu dem Zweck, Ihnen automatische Geburtstags-Glückwünsche auf dem entsprechenden Discord-Server zu senden.</p>
+
+    <h2>4. Ihre Rechte (DSGVO)</h2>
+    <p>Sie haben jederzeit das Recht, unentgeltlich Auskunft über Herkunft, Empfänger und Zweck Ihrer gespeicherten personenbezogenen Daten zu erhalten. Sie haben außerdem ein Recht, die Berichtigung oder Löschung dieser Daten zu verlangen.</p>
+    <p>Die Löschung Ihrer Daten beim Discord Bot können Sie ganz einfach und selbstständig durchführen, indem Sie den Befehl <code>/datenloeschung</code> im Discord Chat eingeben. Dadurch werden alle Ihre personenbezogenen Einträge sofort und unwiderruflich aus unserer Datenbank gelöscht.</p>
+
+    <h2>5. Kontakt</h2>
+    <p>Für Datenschutzanfragen wenden Sie sich bitte an:<br>
+    rechtliches@thegrid.frogly.fun</p>
+</body>
+</html>

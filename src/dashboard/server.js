@@ -266,6 +266,19 @@ export function startDashboard(client) {
     res.redirect('/');
   });
 
+  // Public Legal Pages
+  app.get('/impressum', (req, res) => {
+    res.render('impressum');
+  });
+
+  app.get('/datenschutzerklaerung', (req, res) => {
+    res.render('datenschutz');
+  });
+
+  app.get('/tos', (req, res) => {
+    res.render('tos');
+  });
+
   app.listen(PORT, () => {
     console.log(`Dashboard Web Server läuft auf Port ${PORT}`);
   });
