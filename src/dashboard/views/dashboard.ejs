@@ -367,6 +367,26 @@
             <p>Du bist berechtigt, dieses Dashboard zu sehen, hast jedoch keine administrativen Rechte. Wende dich an den Bot-Besitzer, falls du Einstellungen bearbeiten musst.</p>
         </div>
         <% } %>
+        <div style="margin-top: 24px;">
+            <div class="panel">
+                <h2>🛠️ Versteckte Bot Befehle</h2>
+                <p>Diese Befehle sind für Teammitglieder verfügbar, werden aber nicht in `/help` gelistet:</p>
+                <div class="list-group" style="margin-top: 16px;">
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px;">
+                        <span style="font-weight: 600; color: var(--accent-color);">?message &lt;Text&gt;</span>
+                        <span style="font-size: 13px; color: var(--text-muted);">Lässt den Bot eine normale Nachricht senden (nur wenn Rechte zum Verwalten von Nachrichten vorhanden sind).</span>
+                    </div>
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                        <span style="font-weight: 600; color: var(--accent-color);">?embed &lt;Text&gt;</span>
+                        <span style="font-size: 13px; color: var(--text-muted);">Lässt den Bot ein schickes, oranges Embed mit deinem Text senden.</span>
+                    </div>
+                    <div class="list-item" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                        <span style="font-weight: 600; color: var(--accent-color);">/dashboard</span>
+                        <span style="font-size: 13px; color: var(--text-muted);">Zeigt dir als Teammitglied den Link zu diesem Dashboard direkt in Discord an.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <footer>

@@ -231,6 +231,12 @@
     </nav>
 
     <main class="main-content">
+        <% if (typeof errorMsg !== 'undefined' && errorMsg) { %>
+            <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--text-main); padding: 12px 16px; border-radius: 8px; margin-bottom: 24px;">
+                ❌ <%= errorMsg %>
+            </div>
+        <% } %>
+
         <div class="header">
             <h1>📢 Announcements System</h1>
             <p>Verwalte die Twitch-Streamer und YouTube-Kanäle, die automatisch in Kanal
@@ -299,11 +305,10 @@
 
                 <form action="/dashboard/announcements/add" method="POST" class="add-form">
                     <input type="hidden" name="type" value="youtube">
-                    <input type="text" name="id" placeholder="YouTube Channel ID (z.B. UC...)" required>
+                    <input type="text" name="id" placeholder="YouTube @Name oder ID (z.B. @MontanaBlack)" required>
                     <button type="submit" class="btn btn-primary">Hinzufügen</button>
                 </form>
-                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Achtung: Bitte die genaue
-                    <b>Channel ID</b> eintragen (beginnt meistens mit UC). Nicht das @Handle!</p>
+                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">Tipp: Du kannst einfach den <b>@Benutzernamen</b> eintragen. Das System wandelt ihn automatisch in die richtige ID um!</p>
             </div>
         </div>
     </main>

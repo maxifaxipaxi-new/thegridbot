@@ -186,15 +186,36 @@ export function startDashboard(client) {
   // Announcements Routes (Owner Only)
   app.get('/dashboard/announcements', checkOwner, async (req, res) => {
     const config = await db.getAnnouncementsConfig();
-    res.render('announcements', { user: req.session.user, config });
+    const errorMsg = req.query.error;
+    res.render('announcements', { user: req.session.user, config, errorMsg });
   });
 
   app.post('/dashboard/announcements/add', checkOwner, async (req, res) => {
     const type = req.body.type;
-    const id = req.body.id?.trim();
+    let id = req.body.id?.trim();
     if (id) {
-      if (type === 'twitch') await db.addTwitchStreamer(id);
-      if (type === 'youtube') await db.addYouTubeChannel(id);
+      if (type === 'twitch') {
+        await db.addTwitchStreamer(id);
+      } else if (type === 'youtube') {
+        // Falls der Nutzer einen @Handle eingibt (oder nicht UC...)
+        if (id.startsWith('@') || !id.startsWith('UC')) {
+          try {
+            const handle = id.startsWith('@') ? id : `@${id}`;
+            const response = await fetch(`https://www.youtube.com/${handle}`);
+            const html = await response.text();
+            const match = html.match(/channel\/([Uu][Cc][a-zA-Z0-9_-]{22})/);
+            if (match && match[1]) {
+              id = match[1]; // Handle erfolgreich in UC-ID umgewandelt
+            } else {
+              return res.redirect('/dashboard/announcements?error=YouTube Kanal nicht gefunden');
+            }
+          } catch (err) {
+            console.error('Fehler beim Auflösen des YouTube Handles:', err);
+            return res.redirect('/dashboard/announcements?error=Netzwerkfehler bei YouTube');
+          }
+        }
+        await db.addYouTubeChannel(id);
+      }
     }
     res.redirect('/dashboard/announcements');
   });

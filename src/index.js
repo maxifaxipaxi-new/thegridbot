@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags } from 'discord.js';
 import dotenv from 'dotenv';
 import { db } from './database/database.js';
 import { startBirthdayScheduler } from './scheduler.js';
@@ -18,7 +18,7 @@ const client = new Client({
 
 const PREFIX = '?';
 
-client.on('ready', () => {
+client.once('clientReady', () => {
   console.log(`Bot ist online! Eingeloggt als ${client.user.tag}`);
   
   // Setze Status auf "Bitte nicht stören" (dnd) und Aktivität auf "Schaut zu .grid Community"
@@ -131,7 +131,7 @@ client.on('interactionCreate', async (interaction) => {
           iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
         });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
     // /help
@@ -141,16 +141,14 @@ client.on('interactionCreate', async (interaction) => {
         .setDescription('Hier findest du alle verfügbaren Befehle dieses Bots:')
         .addFields(
           { 
-            name: '✍️ Prefix-Befehle (im Chat schreiben)', 
-            value: '`?message <Nachricht>` - Sendet eine normale Nachricht als Bot.\n`?embed <Nachricht>` - Sendet ein schickes Embed mit deinem Text.' 
-          },
-          { 
             name: '🚀 Slash-Befehle (mit / ausführen)', 
             value: '`/help` - Zeigt diese Hilfe-Übersicht.\n' +
                   '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
                   '`/geburtstag <tag> <monat>` - Trage deinen Geburtstag ein.\n' +
                   '`/datenschutz` - Zeigt die Datenschutzerklärung (nur für dich sichtbar).\n' +
-                  '`/datenloeschung` - Löscht alle deine personenbezogenen Daten aus der Datenbank (nur für dich sichtbar).' 
+                  '`/datenloeschung` - Löscht alle deine personenbezogenen Daten aus der Datenbank (nur für dich sichtbar).\n' +
+                  '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
+                  '`/streamer` - Infos für Content Creator & Streamer.'
           }
         )
         .setColor('#FFA500') // Orange für das Server-Design
@@ -173,7 +171,7 @@ client.on('interactionCreate', async (interaction) => {
       if (tag > maxDays[monat]) {
         return interaction.reply({ 
           content: `❌ Ungültiges Datum! Der Monat **${monat}** hat keine **${tag}** Tage.`, 
-          ephemeral: true 
+          flags: MessageFlags.Ephemeral 
         });
       }
 
@@ -181,7 +179,7 @@ client.on('interactionCreate', async (interaction) => {
 
       await interaction.reply({
         content: `🎉 Dein Geburtstag wurde erfolgreich auf den **${tag}.${monat}.** festgelegt! Ich werde dir an diesem Tag gratulieren.`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
       });
     }
 
@@ -197,7 +195,7 @@ client.on('interactionCreate', async (interaction) => {
           'Der Bot verarbeitet und speichert folgende Daten:\n' +
           '• **Discord-User-ID:** Zur eindeutigen Zuordnung von Geburtstagen zu deinem Discord-Konto.\n' +
           '• **Geburtstag (Tag & Monat):** Um automatische Glückwünsche am Geburtstag im konfigurierten Kanal zu senden.\n' +
-          '• **Gilden-ID & Kanal-ID:** Zur Speicherung der Server-Konfiguration (in welchem Kanal Glückwünsche gesendet werden sollen).\n\n' +
+          '• **Server-Einstellungen:** Der Bot speichert zudem Gilden-IDs, Kanal-IDs sowie öffentliche Twitch-/YouTube-Namen für das Dashboard und die automatischen Ankündigungen (keine personenbezogenen Daten normaler Nutzer).\n\n' +
           '*Rechtsgrundlage:* Die Verarbeitung erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (**Art. 6 Abs. 1 lit. a DSGVO**) durch die freiwillige Eingabe deines Geburtstags über den Befehl `/geburtstag`.\n\n' +
           '### 3. Datenspeicherung & Sicherheit\n' +
           '• Alle Daten werden lokal in einer sicheren JSON-Datei (`db.json`) auf dem Server des Bot-Betreibers in Deutschland gespeichert.\n' +
@@ -216,7 +214,7 @@ client.on('interactionCreate', async (interaction) => {
           iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
         });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
     // /datenloeschung
@@ -237,15 +235,70 @@ client.on('interactionCreate', async (interaction) => {
           iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
         });
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    }
+
+    // /streamer
+    else if (commandName === 'streamer') {
+      const embed = new EmbedBuilder()
+        .setTitle('🎥 Content Creator & Streamer')
+        .setDescription(
+          'Du bist Streamer oder Content Creator und hast Lust auf eine unbezahlte Kooperation?\n\n' +
+          'Melde dich gerne per **Support Ticket** bei uns im Kanal <#1294679527967948930> (bzw. [hier klicken](https://discord.com/channels/1294669609349283925/1294679527967948930)).\n\n' +
+          'Wir helfen dir gerne mit **Cross-Promotion** und der Vernetzung in unserem **Content Creator Netzwerk**!'
+        )
+        .setColor('#FFA500') // Orange
+        .setTimestamp()
+        .setFooter({ 
+          text: '🫵 | the grid.', 
+          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+        });
+
+      await interaction.reply({ embeds: [embed] });
+    }
+
+    // /regeln
+    else if (commandName === 'regeln') {
+      const embed = new EmbedBuilder()
+        .setTitle('📜 Server-Regeln & Verhaltenscodex')
+        .setDescription(
+          'Bitte achte darauf, dich an alle unsere Server-Regeln in <#1294674136081367133> zu halten.\n\n' +
+          '**Wichtigste Grundregel:** Setze in jeder Situation vor allem deinen gesunden Menschenverstand ein! Miteinander statt gegeneinander.'
+        )
+        .setColor('#FFA500') // Orange
+        .setTimestamp()
+        .setFooter({ 
+          text: '🫵 | the grid.', 
+          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+        });
+
+      await interaction.reply({ embeds: [embed] });
+    }
+
+    // /dashboard
+    else if (commandName === 'dashboard') {
+      const member = interaction.member;
+      const hasRole = member.roles.cache.has('1294670974020616294');
+
+      if (hasRole) {
+        await interaction.reply({ 
+          content: 'Hier geht es zum Dashboard: https://thegrid.frogly.fun/dashboard/', 
+          flags: MessageFlags.Ephemeral 
+        });
+      } else {
+        await interaction.reply({ 
+          content: 'nanana nur für echte frösche erlaubt.', 
+          flags: MessageFlags.Ephemeral 
+        });
+      }
     }
   } catch (error) {
     console.error(`Fehler bei Interaktion ${commandName}:`, error);
     try {
       if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({ content: 'Bei der Ausführung dieses Befehls ist ein Fehler aufgetreten!', ephemeral: true });
+        await interaction.followUp({ content: 'Bei der Ausführung dieses Befehls ist ein Fehler aufgetreten!', flags: MessageFlags.Ephemeral });
       } else {
-        await interaction.reply({ content: 'Bei der Ausführung dieses Befehls ist ein Fehler aufgetreten!', ephemeral: true });
+        await interaction.reply({ content: 'Bei der Ausführung dieses Befehls ist ein Fehler aufgetreten!', flags: MessageFlags.Ephemeral });
       }
     } catch (err) {
       console.error('Konnte Fehlerantwort nicht senden:', err);

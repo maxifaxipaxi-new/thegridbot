@@ -37,10 +37,22 @@ const commands = [
   new SlashCommandBuilder()
     .setName('datenloeschung')
     .setDescription('Löscht all deine gespeicherten personenbezogenen Daten aus dem Bot-System (DSGVO-konform).'),
+
+  new SlashCommandBuilder()
+    .setName('regeln')
+    .setDescription('Zeigt einen wichtigen Hinweis zu den Server-Regeln.'),
+
+  new SlashCommandBuilder()
+    .setName('dashboard')
+    .setDescription('Zeigt den Link zum Bot-Dashboard (Nur für Teammitglieder).'),
+
+  new SlashCommandBuilder()
+    .setName('streamer')
+    .setDescription('Informationen für Content Creator & Streamer bezüglich Kooperationen.'),
 ].map(command => command.toJSON());
 
-if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID) {
-  console.error('Fehler: DISCORD_TOKEN oder CLIENT_ID fehlt in der .env Datei.');
+if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {
+  console.error('Fehler: DISCORD_TOKEN oder DISCORD_CLIENT_ID fehlt in der .env Datei.');
   process.exit(1);
 }
 
@@ -51,19 +63,19 @@ const GUILD_ID = '1294669609349283925'; // Gilden-ID für sofortiges Update
   try {
     console.log(`Starte Registrierung von ${commands.length} Slash-Commands...`);
 
-    // 1. Globale Commands aktualisieren
-    const globalData = await rest.put(
-      Routes.applicationCommands(process.env.CLIENT_ID),
+    // 1. Gilden-spezifische Commands aktualisieren (sofortiges Update)
+    const guildData = await rest.put(
+      Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, GUILD_ID),
       { body: commands }
     );
-    console.log(`Erfolgreich ${globalData.length} globale Slash-Commands registriert!`);
+    console.log(`Erfolgreich ${guildData.length} Gilden-Slash-Commands für Gilde ${GUILD_ID} registriert (für sofortige Sichtbarkeit)!`);
 
-    // 2. Gilden-spezifische Commands bereinigen (leeres Array senden, um Duplikate zu vermeiden)
-    const guildData = await rest.put(
-      Routes.applicationGuildCommands(process.env.CLIENT_ID, GUILD_ID),
+    // 2. Globale Commands bereinigen (leeres Array senden, um Duplikate zu vermeiden)
+    const globalData = await rest.put(
+      Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
       { body: [] }
     );
-    console.log(`Gilden-Slash-Commands für Gilde ${GUILD_ID} erfolgreich gelöscht (um Duplikate zu vermeiden).`);
+    console.log(`Globale Slash-Commands erfolgreich gelöscht.`);
   } catch (error) {
     console.error('Fehler bei der Registrierung der Slash-Commands:', error);
   }
