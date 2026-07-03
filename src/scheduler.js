@@ -2,7 +2,15 @@ import cron from 'node-cron';
 import { EmbedBuilder } from 'discord.js';
 import { db } from './database/database.js';
 
+let isSchedulerStarted = false;
+
 export function startBirthdayScheduler(client) {
+  if (isSchedulerStarted) {
+    console.log('Geburtstags-Scheduler läuft bereits.');
+    return;
+  }
+  isSchedulerStarted = true;
+
   // Cron-Job: Täglich um 00:00 Uhr nach deutscher Zeit
   cron.schedule('0 0 * * *', () => {
     console.log('Führe täglichen Geburtstags-Check aus...');

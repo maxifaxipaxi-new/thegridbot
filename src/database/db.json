@@ -1,8 +1,34 @@
 {
-  "birthdays": {},
+  "birthdays": {
+    "690113625767411768": {
+      "day": 24,
+      "month": 12
+    },
+    "1253671462586286171": {
+      "day": 20,
+      "month": 1
+    },
+    "773221559052664864": {
+      "day": 21,
+      "month": 5
+    }
+  },
   "guilds": {
     "1294669609349283925": {
       "birthdayChannelId": "1294669828270850058"
     }
+  },
+  "announcements": {
+    "twitch": [
+      "livemfp",
+      "TheOnlyAnnaelle",
+      "livenovos",
+      "ghostlycazu"
+    ],
+    "youtube": [],
+    "postedStreams": [
+      "317870539238"
+    ],
+    "postedVideos": []
   }
 }

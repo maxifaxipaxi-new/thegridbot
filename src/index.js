@@ -2,6 +2,8 @@ import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityT
 import dotenv from 'dotenv';
 import { db } from './database/database.js';
 import { startBirthdayScheduler } from './scheduler.js';
+import { startDashboard } from './dashboard/server.js';
+import { startAnnouncementsScheduler } from './announcements.js';
 
 dotenv.config();
 
@@ -16,7 +18,7 @@ const client = new Client({
 
 const PREFIX = '?';
 
-client.once('ready', () => {
+client.on('ready', () => {
   console.log(`Bot ist online! Eingeloggt als ${client.user.tag}`);
   
   // Setze Status auf "Bitte nicht stören" (dnd) und Aktivität auf "Schaut zu .grid Community"
@@ -30,6 +32,9 @@ client.once('ready', () => {
   
   // Starte den Geburtstags-Scheduler
   startBirthdayScheduler(client);
+
+  // Starte den Announcements-Scheduler
+  startAnnouncementsScheduler(client);
 });
 
 // Event-Handler für Prefix-Commands (?message und ?embed)
@@ -252,6 +257,9 @@ if (!process.env.DISCORD_TOKEN) {
   console.error('Fehler: DISCORD_TOKEN fehlt in den Umgebungsvariablen.');
   process.exit(1);
 }
+
+// Starte das Web-Dashboard sofort, unabhängig vom Bot-Status
+startDashboard(client);
 
 client.login(process.env.DISCORD_TOKEN).catch(err => {
   console.error('Login beim Discord API Server fehlgeschlagen:', err);

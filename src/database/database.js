@@ -70,6 +70,79 @@ class Database {
     const data = await this._read();
     return data.guilds;
   }
+
+  // ANNOUNCEMENTS
+  async getAnnouncementsConfig() {
+    const data = await this._read();
+    if (!data.announcements) {
+      data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
+      await this._write(data);
+    }
+    return data.announcements;
+  }
+
+  async addTwitchStreamer(username) {
+    const data = await this._read();
+    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
+    if (!data.announcements.twitch.includes(username)) {
+      data.announcements.twitch.push(username);
+      await this._write(data);
+    }
+  }
+
+  async removeTwitchStreamer(username) {
+    const data = await this._read();
+    if (!data.announcements) return;
+    data.announcements.twitch = data.announcements.twitch.filter(u => u !== username);
+    await this._write(data);
+  }
+
+  async addYouTubeChannel(channelId) {
+    const data = await this._read();
+    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
+    if (!data.announcements.youtube.includes(channelId)) {
+      data.announcements.youtube.push(channelId);
+      await this._write(data);
+    }
+  }
+
+  async removeYouTubeChannel(channelId) {
+    const data = await this._read();
+    if (!data.announcements) return;
+    data.announcements.youtube = data.announcements.youtube.filter(c => c !== channelId);
+    await this._write(data);
+  }
+
+  async hasPostedStream(streamId) {
+    const config = await this.getAnnouncementsConfig();
+    return config.postedStreams.includes(streamId);
+  }
+
+  async markStreamPosted(streamId) {
+    const data = await this._read();
+    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
+    data.announcements.postedStreams.push(streamId);
+    // Keep only last 100 to prevent unbounded growth
+    if (data.announcements.postedStreams.length > 100) {
+      data.announcements.postedStreams.shift();
+    }
+    await this._write(data);
+  }
+
+  async hasPostedVideo(videoId) {
+    const config = await this.getAnnouncementsConfig();
+    return config.postedVideos.includes(videoId);
+  }
+
+  async markVideoPosted(videoId) {
+    const data = await this._read();
+    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
+    data.announcements.postedVideos.push(videoId);
+    if (data.announcements.postedVideos.length > 100) {
+      data.announcements.postedVideos.shift();
+    }
+    await this._write(data);
+  }
 }
 
 export const db = new Database();

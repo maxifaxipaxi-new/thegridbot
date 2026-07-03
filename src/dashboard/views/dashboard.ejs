@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Grid Bot - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --accent-color: #f97316;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.1), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.1), transparent 40%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .nav-brand {
+            font-weight: 800;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-brand span {
+            color: var(--accent-color);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-color);
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #ea580c;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background: #16a34a;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        .alert-success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+
+        .welcome-section {
+            margin-bottom: 40px;
+            animation: slideDown 0.5s ease-out;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .welcome-section h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .welcome-section p {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online { background-color: var(--success); box-shadow: 0 0 10px var(--success); }
+        .status-dot.offline { background-color: var(--danger); box-shadow: 0 0 10px var(--danger); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--surface-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--accent-color);
+        }
+
+        .admin-panels {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        .panel {
+            background: var(--surface-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 32px;
+        }
+
+        .panel h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel p {
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 16px;
+        }
+
+        footer {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            background: rgba(0, 0, 0, 0.2);
+            border-top: 1px solid var(--glass-border);
+            margin-top: auto;
+        }
+
+        .made-by {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            🫵 the <span>grid.</span>
+        </div>
+        <div class="user-profile">
+            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="Avatar" class="avatar" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+            <span><%= user.username %></span>
+            <a href="/logout" class="btn btn-logout">Logout</a>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <% if (locals.error) { %>
+            <div class="alert alert-error"><%= error %></div>
+        <% } %>
+        <% if (locals.success) { %>
+            <div class="alert alert-success"><%= success %></div>
+        <% } %>
+
+        <div class="welcome-section">
+            <div>
+                <h1>Willkommen zurück, <%= user.isOwner ? 'Besitzer' : 'Team-Mitglied' %>!</h1>
+                <p>Hier ist die Übersicht über deinen Discord Bot.</p>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot <%= stats.botStatus === 'Online' ? 'online' : 'offline' %>"></span>
+                Bot Status: <%= stats.botStatus %>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">.grid Mitglieder</div>
+                <div class="stat-value"><%= stats.targetGuildMembers %></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Globale Server</div>
+                <div class="stat-value"><%= stats.guilds %></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Globale User</div>
+                <div class="stat-value"><%= stats.users %></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Latenz</div>
+                <div class="stat-value"><%= stats.ping %>ms</div>
+            </div>
+        </div>
+
+        <% if (user.isOwner) { %>
+        <div class="admin-panels">
+            <div class="panel">
+                <h2>⚙️ Bot Management</h2>
+                <p>Verwalte den Status des Bots. Wenn du den Bot stoppst, ist er offline und reagiert nicht mehr auf Befehle.</p>
+                <div class="panel-actions">
+                    <form action="/api/bot/start" method="POST">
+                        <button type="submit" class="btn btn-success" <%= stats.botStatus === 'Online' ? 'disabled style="opacity: 0.5;"' : '' %>>▶ Bot Starten</button>
+                    </form>
+                    <form action="/api/bot/stop" method="POST">
+                        <button type="submit" class="btn btn-danger" <%= stats.botStatus === 'Offline' ? 'disabled style="opacity: 0.5;"' : '' %>>⏹ Bot Stoppen</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>📢 Announcements System</h2>
+                <p>Verwalte die automatischen Benachrichtigungen für Twitch Livestreams und neue YouTube Videos.</p>
+                <div class="panel-actions">
+                    <a href="/dashboard/announcements" class="btn btn-primary">System konfigurieren</a>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>💾 Datenbank Editor</h2>
+                <p>Die Datenbank (`db.json`) manuell bearbeiten. Bitte sei vorsichtig mit Änderungen!</p>
+                <div class="panel-actions">
+                    <a href="/dashboard/db" class="btn btn-primary">Editor öffnen</a>
+                </div>
+            </div>
+        </div>
+        <% } else { %>
+        <div class="panel">
+            <h2>🛡️ Team Ansicht</h2>
+            <p>Du bist berechtigt, dieses Dashboard zu sehen, hast jedoch keine administrativen Rechte. Wende dich an den Bot-Besitzer, falls du Einstellungen bearbeiten musst.</p>
+        </div>
+        <% } %>
+    </main>
+
+    <footer>
+        made by <span class="made-by">MaxiFaxiPaxi</span>
+    </footer>
+</body>
+</html>
