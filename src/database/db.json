@@ -2,9 +2,36 @@
   "birthdays": {},
   "guilds": {},
   "announcements": {
-    "twitch": [],
-    "youtube": [],
-    "postedStreams": [],
-    "postedVideos": []
-  }
+    "twitch": [
+      "livenovos",
+      "livemfp"
+    ],
+    "youtube": [
+      "UC_Xkl0PPFVReuBmIgUlZFyw",
+      "UCw9Rj46X14UO2QyCa248u-Q"
+    ],
+    "postedStreams": [
+      "317884975078",
+      "317816489829",
+      "317816515941",
+      "317816571493",
+      "317819593829",
+      "317830393445",
+      "317830947941",
+      "317692832103",
+      "317693756903",
+      "317694926695",
+      "317695371239",
+      "317697316711",
+      "317707430247",
+      "317707487463",
+      "317707527399",
+      "317924696550"
+    ],
+    "postedVideos": [
+      "yt:video:uMRU6NXZ16M",
+      "yt:video:1M72Sq0GJSs"
+    ]
+  },
+  "dynamicChannels": {}
 }

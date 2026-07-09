@@ -4,6 +4,7 @@ import { db } from './database/database.js';
 import { startBirthdayScheduler } from './scheduler.js';
 import { startDashboard } from './dashboard/server.js';
 import { startAnnouncementsScheduler } from './announcements.js';
+import { setupDynamicVCs } from './dynamic-vc.js';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildVoiceStates,
   ],
 });
 
@@ -35,6 +37,9 @@ client.once('clientReady', () => {
 
   // Starte den Announcements-Scheduler
   startAnnouncementsScheduler(client);
+
+  // Starte Dynamische Voice-Channels Handler
+  setupDynamicVCs(client);
 });
 
 // Event-Handler für Prefix-Commands (?message und ?embed)
@@ -290,6 +295,45 @@ client.on('interactionCreate', async (interaction) => {
           content: 'nanana nur für echte frösche erlaubt.', 
           flags: MessageFlags.Ephemeral 
         });
+      }
+    }
+
+    // --- Dynamische Voice Channels Commands ---
+    else if (['vc-rename', 'vc-limit', 'vc-lock', 'vc-unlock'].includes(commandName)) {
+      const channel = interaction.member.voice.channel;
+      if (!channel) {
+        return interaction.reply({ content: '❌ Du musst dich in deinem Voice-Channel befinden, um diesen Befehl auszuführen!', flags: MessageFlags.Ephemeral });
+      }
+
+      const isDynamic = await db.isDynamicChannel(channel.id);
+      if (!isDynamic) {
+        return interaction.reply({ content: '❌ Dieser Befehl kann nur in dynamisch erstellten Voice-Channels verwendet werden.', flags: MessageFlags.Ephemeral });
+      }
+
+      const ownerId = await db.getDynamicChannelOwner(channel.id);
+      if (ownerId !== interaction.user.id) {
+        return interaction.reply({ content: '❌ Nur der Ersteller dieses Voice-Channels kann ihn verwalten!', flags: MessageFlags.Ephemeral });
+      }
+
+      if (commandName === 'vc-rename') {
+        const name = interaction.options.getString('name');
+        const prefixedName = `📞│ ${name}`;
+        await channel.setName(prefixedName);
+        await interaction.reply({ content: `✅ Voice-Channel wurde in **${prefixedName}** umbenannt.`, flags: MessageFlags.Ephemeral });
+      }
+      else if (commandName === 'vc-limit') {
+        const limit = interaction.options.getInteger('anzahl');
+        await channel.setUserLimit(limit);
+        await interaction.reply({ content: `✅ Nutzerlimit wurde auf **${limit === 0 ? 'Unbegrenzt' : limit}** gesetzt.`, flags: MessageFlags.Ephemeral });
+      }
+      else if (commandName === 'vc-lock') {
+        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
+        await channel.permissionOverwrites.edit(interaction.user.id, { Connect: true });
+        await interaction.reply({ content: '🔒 Voice-Channel wurde für neue Nutzer gesperrt.', flags: MessageFlags.Ephemeral });
+      }
+      else if (commandName === 'vc-unlock') {
+        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: null });
+        await interaction.reply({ content: '🔓 Voice-Channel ist wieder für alle geöffnet.', flags: MessageFlags.Ephemeral });
       }
     }
   } catch (error) {

@@ -12,7 +12,7 @@ class Database {
       return JSON.parse(data);
     } catch (error) {
       // Falls die Datei nicht existiert oder fehlerhaft ist, Standardstruktur zurückgeben
-      return { birthdays: {}, guilds: {} };
+      return { birthdays: {}, guilds: {}, dynamicChannels: {} };
     }
   }
 
@@ -142,6 +142,35 @@ class Database {
       data.announcements.postedVideos.shift();
     }
     await this._write(data);
+  }
+
+  // DYNAMIC VOICE CHANNELS
+  async addDynamicChannel(channelId, ownerId) {
+    const data = await this._read();
+    if (!data.dynamicChannels) data.dynamicChannels = {};
+    data.dynamicChannels[channelId] = ownerId;
+    await this._write(data);
+  }
+
+  async removeDynamicChannel(channelId) {
+    const data = await this._read();
+    if (!data.dynamicChannels) return;
+    if (data.dynamicChannels[channelId]) {
+      delete data.dynamicChannels[channelId];
+      await this._write(data);
+    }
+  }
+
+  async getDynamicChannelOwner(channelId) {
+    const data = await this._read();
+    if (!data.dynamicChannels) return null;
+    return data.dynamicChannels[channelId] || null;
+  }
+
+  async isDynamicChannel(channelId) {
+    const data = await this._read();
+    if (!data.dynamicChannels) return false;
+    return !!data.dynamicChannels[channelId];
   }
 }
 

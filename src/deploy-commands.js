@@ -49,6 +49,34 @@ const commands = [
   new SlashCommandBuilder()
     .setName('streamer')
     .setDescription('Informationen für Content Creator & Streamer bezüglich Kooperationen.'),
+
+  new SlashCommandBuilder()
+    .setName('vc-rename')
+    .setDescription('Benennt deinen temporären Voice-Channel um.')
+    .addStringOption(option =>
+      option.setName('name')
+        .setDescription('Der neue Name des Channels')
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('vc-limit')
+    .setDescription('Setzt ein Nutzerlimit für deinen temporären Voice-Channel.')
+    .addIntegerOption(option =>
+      option.setName('anzahl')
+        .setDescription('Maximale Anzahl an Nutzern (0 für unbegrenzt)')
+        .setRequired(true)
+        .setMinValue(0)
+        .setMaxValue(99)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('vc-lock')
+    .setDescription('Sperrt deinen temporären Voice-Channel für neue Nutzer.'),
+
+  new SlashCommandBuilder()
+    .setName('vc-unlock')
+    .setDescription('Entsperrt deinen temporären Voice-Channel wieder.'),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {
