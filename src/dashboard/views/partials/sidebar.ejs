@@ -1,0 +1,50 @@
+<nav class="sidebar">
+    <div class="sidebar-header">
+        <img src="https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless" alt="Logo">
+        <a href="/dashboard" class="sidebar-brand">the <span>grid.</span></a>
+    </div>
+
+    <div class="sidebar-nav">
+        <a href="/dashboard" class="nav-item <%= locals.currentPath === '/dashboard' ? 'active' : '' %>">
+            <i class="fa-solid fa-house"></i>
+            <span>Übersicht</span>
+        </a>
+        <a href="/dashboard/announcements" class="nav-item <%= locals.currentPath === '/dashboard/announcements' ? 'active' : '' %>">
+            <i class="fa-solid fa-bullhorn"></i>
+            <span>Announcements</span>
+        </a>
+        <a href="/dashboard/bans" class="nav-item <%= locals.currentPath === '/dashboard/bans' ? 'active' : '' %>">
+            <i class="fa-solid fa-gavel"></i>
+            <span>Bann-Verwaltung</span>
+        </a>
+        <a href="/dashboard/audit" class="nav-item <%= locals.currentPath === '/dashboard/audit' ? 'active' : '' %>">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Audit Logs</span>
+        </a>
+        <a href="/dashboard/birthdays" class="nav-item <%= locals.currentPath === '/dashboard/birthdays' ? 'active' : '' %>">
+            <i class="fa-solid fa-cake-candles"></i>
+            <span>Geburtstage</span>
+        </a>
+
+        <% if (user.isOwner) { %>
+            <div style="margin: 16px 16px 8px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">Admin Tools</div>
+            <a href="/dashboard/db" class="nav-item <%= locals.currentPath === '/dashboard/db' ? 'active' : '' %>" style="border-left: 2px solid var(--danger); border-radius: 0 8px 8px 0;">
+                <i class="fa-solid fa-database" style="color: var(--danger);"></i>
+                <span>Datenbank Editor</span>
+            </a>
+        <% } %>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="user-profile">
+            <img src="<%= user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="Avatar">
+            <div class="user-info">
+                <span class="user-name"><%= user.username %></span>
+                <span class="user-role"><%= user.isOwner ? 'Besitzer' : 'Moderator' %></span>
+            </div>
+        </div>
+        <a href="/logout" class="btn btn-logout">
+            <i class="fa-solid fa-right-from-bracket"></i> Abmelden
+        </a>
+    </div>
+</nav>

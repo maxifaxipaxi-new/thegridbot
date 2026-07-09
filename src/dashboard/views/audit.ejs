@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Audit Logs - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/audit' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">Audit Logs</h1>
+        </div>
+
+        <main class="main-content">
+            <div class="panel">
+                <h2><i class="fa-solid fa-list-check" style="color: var(--accent-color);"></i> Letzte 10 Aktionen</h2>
+                <div class="table-responsive" style="margin-top: 16px;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Datum</th>
+                                <th>Aktion</th>
+                                <th>Ausführender</th>
+                                <th>Ziel</th>
+                                <th>Grund</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (logs.length === 0) { %>
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 32px;">Keine Audit-Logs gefunden oder Bot offline.</td>
+                                </tr>
+                            <% } else { %>
+                                <% logs.forEach(log => { %>
+                                    <tr>
+                                        <td><small style="color: var(--text-muted);"><%= new Date(log.date).toLocaleString('de-DE') %></small></td>
+                                        <td><span class="badge badge-info"><%= log.action %></span></td>
+                                        <td>
+                                            <% if (log.executor) { %>
+                                                <div style="font-weight: 600;"><%= log.executor.tag %></div>
+                                                <small style="color: var(--text-muted);"><%= log.executor.id %></small>
+                                            <% } else { %>
+                                                <span style="color: var(--text-muted);">Unbekannt</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <% if (log.target && log.target.tag) { %>
+                                                <div style="font-weight: 600;"><%= log.target.tag %></div>
+                                            <% } else if (log.target && log.target.name) { %>
+                                                <div style="font-weight: 600;"><%= log.target.name %></div>
+                                            <% } else if (log.target) { %>
+                                                <%= log.target.id || log.target %>
+                                            <% } else { %>
+                                                -
+                                            <% } %>
+                                        </td>
+                                        <td><span style="font-style: italic; color: var(--text-muted);"><%= log.reason || '-' %></span></td>
+                                    </tr>
+                                <% }) %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        <%- include('partials/footer') %>
+    </div>
+</body>
+</html>

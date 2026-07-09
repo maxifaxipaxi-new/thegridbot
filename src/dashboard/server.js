@@ -19,6 +19,7 @@ export function startDashboard(client) {
   
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
+  app.use('/public', express.static(path.join(__dirname, 'public')));
 
   app.use(session({
     secret: process.env.SESSION_SECRET || 'fallback_secret',
@@ -183,14 +184,14 @@ export function startDashboard(client) {
     }
   });
 
-  // Announcements Routes (Owner Only)
-  app.get('/dashboard/announcements', checkOwner, async (req, res) => {
+  // Announcements Routes (Mods/Team)
+  app.get('/dashboard/announcements', checkAuth, async (req, res) => {
     const config = await db.getAnnouncementsConfig();
     const errorMsg = req.query.error;
     res.render('announcements', { user: req.session.user, config, errorMsg });
   });
 
-  app.post('/dashboard/announcements/add', checkOwner, async (req, res) => {
+  app.post('/dashboard/announcements/add', checkAuth, async (req, res) => {
     const type = req.body.type;
     let id = req.body.id?.trim();
     if (id) {
@@ -220,7 +221,7 @@ export function startDashboard(client) {
     res.redirect('/dashboard/announcements');
   });
 
-  app.post('/dashboard/announcements/remove', checkOwner, async (req, res) => {
+  app.post('/dashboard/announcements/remove', checkAuth, async (req, res) => {
     const type = req.body.type;
     const id = req.body.id;
     if (id) {
@@ -228,6 +229,102 @@ export function startDashboard(client) {
       if (type === 'youtube') await db.removeYouTubeChannel(id);
     }
     res.redirect('/dashboard/announcements');
+  });
+
+  // Ban Management Routes (Mods/Team)
+  app.get('/dashboard/bans', checkAuth, async (req, res) => {
+    let bans = [];
+    if (client.isReady()) {
+      try {
+        const guild = client.guilds.cache.get(GUILD_ID);
+        if (guild) {
+          const fetchedBans = await guild.bans.fetch();
+          bans = fetchedBans.map(ban => ({
+            user: ban.user,
+            reason: ban.reason || 'Kein Grund angegeben'
+          }));
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden der Bans:', err);
+      }
+    }
+    res.render('bans', { user: req.session.user, bans, errorMsg: req.query.error, successMsg: req.query.success });
+  });
+
+  app.post('/dashboard/bans/ban', checkAuth, async (req, res) => {
+    const userId = req.body.userId?.trim();
+    const reason = req.body.reason?.trim() || 'Über Dashboard gebannt';
+    if (!userId) return res.redirect('/dashboard/bans?error=Bitte eine User-ID eingeben');
+    if (client.isReady()) {
+      try {
+        const guild = client.guilds.cache.get(GUILD_ID);
+        if (guild) {
+          await guild.members.ban(userId, { reason });
+          return res.redirect('/dashboard/bans?success=User erfolgreich gebannt');
+        }
+      } catch (err) {
+        console.error('Fehler beim Bannen:', err);
+        return res.redirect('/dashboard/bans?error=Fehler beim Bannen (Evtl. ungültige ID oder fehlende Rechte)');
+      }
+    }
+    res.redirect('/dashboard/bans?error=Bot ist offline');
+  });
+
+  app.post('/dashboard/bans/unban', checkAuth, async (req, res) => {
+    const userId = req.body.userId?.trim();
+    if (client.isReady() && userId) {
+      try {
+        const guild = client.guilds.cache.get(GUILD_ID);
+        if (guild) {
+          await guild.bans.remove(userId);
+          return res.redirect('/dashboard/bans?success=User erfolgreich entbannt');
+        }
+      } catch (err) {
+        console.error('Fehler beim Entbannen:', err);
+        return res.redirect('/dashboard/bans?error=Fehler beim Entbannen');
+      }
+    }
+    res.redirect('/dashboard/bans');
+  });
+
+  // Audit Logs (Mods/Team)
+  app.get('/dashboard/audit', checkAuth, async (req, res) => {
+    let logs = [];
+    if (client.isReady()) {
+      try {
+        const guild = client.guilds.cache.get(GUILD_ID);
+        if (guild) {
+          const auditLogs = await guild.fetchAuditLogs({ limit: 10 });
+          logs = auditLogs.entries.map(entry => ({
+            action: entry.actionType,
+            executor: entry.executor,
+            target: entry.target,
+            reason: entry.reason,
+            date: entry.createdAt
+          }));
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden des Audit Logs:', err);
+      }
+    }
+    res.render('audit', { user: req.session.user, logs });
+  });
+
+  // Birthdays (Mods/Team)
+  app.get('/dashboard/birthdays', checkAuth, async (req, res) => {
+    const data = await fs.readFile(dbPath, 'utf-8');
+    const parsed = JSON.parse(data);
+    const birthdays = parsed.birthdays || {};
+    res.render('birthdays', { user: req.session.user, birthdays, errorMsg: req.query.error, successMsg: req.query.success });
+  });
+
+  app.post('/dashboard/birthdays/delete', checkAuth, async (req, res) => {
+    const userId = req.body.userId?.trim();
+    if (userId) {
+      await db.deleteUserBirthday(userId);
+      return res.redirect('/dashboard/birthdays?success=Geburtstag gelöscht');
+    }
+    res.redirect('/dashboard/birthdays');
   });
 
   // Bot Management Routes (Owner Only)

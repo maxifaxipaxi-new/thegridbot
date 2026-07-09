@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Geburtstage - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/birthdays' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">Geburtstage</h1>
+        </div>
+
+        <main class="main-content">
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= errorMsg %></div>
+            <% } %>
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success"><i class="fa-solid fa-circle-check"></i> <%= successMsg %></div>
+            <% } %>
+
+            <div class="panel">
+                <h2><i class="fa-solid fa-cake-candles" style="color: var(--accent-color);"></i> Eingetragene Geburtstage (<%= Object.keys(birthdays).length %>)</h2>
+                <div class="table-responsive" style="margin-top: 16px;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User-ID</th>
+                                <th>Datum (Tag.Monat)</th>
+                                <th style="text-align: right;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (Object.keys(birthdays).length === 0) { %>
+                                <tr>
+                                    <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 32px;">Keine Geburtstage in der Datenbank.</td>
+                                </tr>
+                            <% } else { %>
+                                <% for (const [userId, data] of Object.entries(birthdays)) { %>
+                                    <tr>
+                                        <td><code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; color: var(--text-muted);"><%= userId %></code></td>
+                                        <td><strong style="color: var(--accent-color);"><%= data.day %>.<%= data.month %>.</strong></td>
+                                        <td style="text-align: right;">
+                                            <form action="/dashboard/birthdays/delete" method="POST" style="display: inline-block;">
+                                                <input type="hidden" name="userId" value="<%= userId %>">
+                                                <button type="submit" class="btn btn-outline" style="padding: 6px 12px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);"><i class="fa-solid fa-trash"></i> Löschen</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        <%- include('partials/footer') %>
+    </div>
+</body>
+</html>

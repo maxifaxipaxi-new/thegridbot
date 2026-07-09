@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Bann-Verwaltung - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/bans' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">Bann-Verwaltung</h1>
+        </div>
+
+        <main class="main-content">
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= errorMsg %></div>
+            <% } %>
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success"><i class="fa-solid fa-circle-check"></i> <%= successMsg %></div>
+            <% } %>
+
+            <div class="panel">
+                <h2><i class="fa-solid fa-gavel" style="color: var(--accent-color);"></i> Jemanden bannen</h2>
+                <form action="/dashboard/bans/ban" method="POST" style="display: flex; gap: 16px; margin-top: 16px;">
+                    <input type="text" name="userId" class="form-control" style="max-width: 250px;" placeholder="User ID" required>
+                    <input type="text" name="reason" class="form-control" style="flex: 1;" placeholder="Grund (Optional)">
+                    <button type="submit" class="btn btn-danger"><i class="fa-solid fa-ban"></i> Bannen</button>
+                </form>
+            </div>
+
+            <div class="panel">
+                <h2><i class="fa-solid fa-list" style="color: var(--accent-color);"></i> Aktuelle Banns (<%= bans.length %>)</h2>
+                <div class="table-responsive" style="margin-top: 16px;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>ID</th>
+                                <th>Grund</th>
+                                <th style="text-align: right;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (bans.length === 0) { %>
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 32px;">Aktuell keine gebannten User auf dem Server.</td>
+                                </tr>
+                            <% } else { %>
+                                <% bans.forEach(ban => { %>
+                                    <tr>
+                                        <td>
+                                            <div style="display: flex; align-items: center; gap: 12px;">
+                                                <img src="<%= ban.user.displayAvatarURL({ dynamic: true, size: 64 }) || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+                                                <strong><%= ban.user.tag %></strong>
+                                            </div>
+                                        </td>
+                                        <td><code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; color: var(--text-muted);"><%= ban.user.id %></code></td>
+                                        <td><%= ban.reason %></td>
+                                        <td style="text-align: right;">
+                                            <form action="/dashboard/bans/unban" method="POST" style="display: inline-block;">
+                                                <input type="hidden" name="userId" value="<%= ban.user.id %>">
+                                                <button type="submit" class="btn btn-outline" style="padding: 6px 12px;"><i class="fa-solid fa-unlock"></i> Entbannen</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        <%- include('partials/footer') %>
+    </div>
+</body>
+</html>
