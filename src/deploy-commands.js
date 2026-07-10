@@ -77,6 +77,11 @@ const commands = [
   new SlashCommandBuilder()
     .setName('vc-unlock')
     .setDescription('Entsperrt deinen temporären Voice-Channel wieder.'),
+
+  new SlashCommandBuilder()
+    .setName('ticketsetup')
+    .setDescription('Erstellt das Ticket-Panel im aktuellen Kanal (Nur für Moderatoren).')
+    .setDefaultMemberPermissions(0), // requires admin/mod perms implicitly, but we also check role inside
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {

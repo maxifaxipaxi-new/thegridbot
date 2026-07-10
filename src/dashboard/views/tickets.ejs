@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Tickets - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/tickets' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">Ticket System</h1>
+        </div>
+
+        <main class="main-content">
+            <p style="color: var(--text-muted); margin-bottom: 32px;">Übersicht aller aktiven und geschlossenen Support-Tickets.</p>
+
+            <div class="panel">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--glass-border);">
+                    <i class="fa-solid fa-ticket" style="font-size: 24px; color: var(--primary-color);"></i>
+                    <h2 style="margin: 0;">Alle Tickets</h2>
+                </div>
+
+                <% if (Object.keys(tickets || {}).length === 0) { %>
+                    <div style="color: var(--text-muted); font-style: italic;">Keine Tickets vorhanden.</div>
+                <% } else { %>
+                    <div style="overflow-x: auto;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Erstellt am</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% Object.entries(tickets).reverse().forEach(([id, t]) => { %>
+                                    <tr>
+                                        <td><strong><%= t.username %></strong></td>
+                                        <td><%= new Date(t.createdAt).toLocaleString('de-DE') %></td>
+                                        <td>
+                                            <% if (t.status === 'open') { %>
+                                                <span style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Offen</span>
+                                            <% } else { %>
+                                                <span style="background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Geschlossen</span>
+                                            <% } %>
+                                        </td>
+                                        <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px;">
+                                            <a href="/dashboard/tickets/<%= id %>" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px;">
+                                                <i class="fa-solid fa-eye"></i> Ansehen
+                                            </a>
+                                            <form action="/dashboard/tickets/<%= id %>/delete" method="POST" style="margin:0;" onsubmit="return confirm('Bist du sicher? Das Ticket wird gelöscht und ein Transkript wird in den Log-Channel gesendet.');">
+                                                <button type="submit" class="btn btn-outline" style="padding: 6px 12px; font-size: 12px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } %>
+            </div>
+        </main>
+        <%- include('partials/footer') %>
+    </div>
+</body>
+</html>

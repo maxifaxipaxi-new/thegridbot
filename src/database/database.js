@@ -172,6 +172,48 @@ class Database {
     if (!data.dynamicChannels) return false;
     return !!data.dynamicChannels[channelId];
   }
+
+  // TICKETS
+  async createTicket(channelId, userId, username) {
+    const data = await this._read();
+    if (!data.tickets) data.tickets = {};
+    data.tickets[channelId] = {
+      userId,
+      username,
+      createdAt: Date.now(),
+      status: 'open'
+    };
+    await this._write(data);
+  }
+
+  async closeTicket(channelId) {
+    const data = await this._read();
+    if (data.tickets && data.tickets[channelId]) {
+      data.tickets[channelId].status = 'closed';
+      await this._write(data);
+    }
+  }
+
+  async reopenTicket(channelId) {
+    const data = await this._read();
+    if (data.tickets && data.tickets[channelId]) {
+      data.tickets[channelId].status = 'open';
+      await this._write(data);
+    }
+  }
+
+  async deleteTicket(channelId) {
+    const data = await this._read();
+    if (data.tickets && data.tickets[channelId]) {
+      delete data.tickets[channelId];
+      await this._write(data);
+    }
+  }
+
+  async getTickets() {
+    const data = await this._read();
+    return data.tickets || {};
+  }
 }
 
 export const db = new Database();

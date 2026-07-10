@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } from 'discord.js';
 import dotenv from 'dotenv';
 import { db } from './database/database.js';
 import { startBirthdayScheduler } from './scheduler.js';
@@ -6,6 +6,7 @@ import { startDashboard } from './dashboard/server.js';
 import { startAnnouncementsScheduler } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
 import { startAutoDeleteScheduler } from './auto-delete.js';
+import { handleTicketSetup, handleTicketButton } from './tickets.js';
 
 dotenv.config();
 
@@ -124,13 +125,22 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// Event-Handler für Slash-Commands
+// Event-Handler für Slash-Commands und Buttons
 client.on('interactionCreate', async (interaction) => {
+  if (interaction.isButton()) {
+    return handleTicketButton(interaction);
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName } = interaction;
 
   try {
+    // /ticketsetup
+    if (commandName === 'ticketsetup') {
+      return handleTicketSetup(interaction);
+    }
+
     // /support
     if (commandName === 'support') {
       const embed = new EmbedBuilder()

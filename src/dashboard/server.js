@@ -5,6 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'node:fs/promises';
 import { db } from '../database/database.js';
+import { deleteTicketChannel } from '../tickets.js';
+import { EmbedBuilder } from 'discord.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -229,6 +231,123 @@ export function startDashboard(client) {
       if (type === 'youtube') await db.removeYouTubeChannel(id);
     }
     res.redirect('/dashboard/announcements');
+  });
+
+  // Ticket Management Routes (Mods/Team)
+  app.get('/dashboard/tickets', checkAuth, async (req, res) => {
+    const tickets = await db.getTickets();
+    res.render('tickets', { user: req.session.user, tickets });
+  });
+
+  app.get('/dashboard/tickets/:id', checkAuth, async (req, res) => {
+    const ticketId = req.params.id;
+    const tickets = await db.getTickets();
+    const ticketData = tickets[ticketId];
+
+    if (!ticketData) {
+      return res.redirect('/dashboard/tickets');
+    }
+
+    let messages = [];
+    let channel = null;
+
+    if (client.isReady()) {
+      channel = client.channels.cache.get(ticketId);
+      if (channel) {
+        try {
+          const fetched = await channel.messages.fetch({ limit: 50 });
+          messages = Array.from(fetched.values()).reverse();
+        } catch (err) {
+          console.error('Fehler beim Laden der Ticket-Nachrichten:', err);
+        }
+      }
+    }
+
+    res.render('ticket_view', { user: req.session.user, ticket: ticketData, ticketId, messages, channelExists: !!channel });
+  });
+
+  app.post('/dashboard/tickets/:id/reply', checkAuth, async (req, res) => {
+    const ticketId = req.params.id;
+    const { content } = req.body;
+    
+    if (client.isReady() && content) {
+      const channel = client.channels.cache.get(ticketId);
+      if (channel) {
+        const embed = new EmbedBuilder()
+          .setDescription(content)
+          .setColor('#FFA500')
+          .setFooter({ 
+            text: `🫵 | the grid. | Geantwortet von: ${req.session.user.username}`, 
+            iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          });
+        
+        await channel.send({ embeds: [embed] }).catch(err => console.error('Fehler beim Senden in Ticket:', err));
+      }
+    }
+    res.redirect(`/dashboard/tickets/${ticketId}`);
+  });
+
+  app.post('/dashboard/tickets/:id/close', checkAuth, async (req, res) => {
+    const ticketId = req.params.id;
+    const tickets = await db.getTickets();
+    const ticketData = tickets[ticketId];
+
+    if (ticketData) {
+      if (client.isReady()) {
+        const channel = client.channels.cache.get(ticketId);
+        if (channel) {
+           await channel.permissionOverwrites.edit(ticketData.userId, { SendMessages: false }).catch(() => {});
+           
+           const closeEmbed = new EmbedBuilder()
+             .setDescription(`🔒 Dieses Ticket wurde von Moderator ${req.session.user.username} (via Dashboard) geschlossen. Es kann nun gelöscht werden.`)
+             .setColor('#ef4444');
+             
+           await channel.send({ embeds: [closeEmbed] }).catch(() => {});
+        }
+      }
+      await db.closeTicket(ticketId);
+    }
+    res.redirect(`/dashboard/tickets/${ticketId}`);
+  });
+
+  app.post('/dashboard/tickets/:id/reopen', checkAuth, async (req, res) => {
+    const ticketId = req.params.id;
+    const tickets = await db.getTickets();
+    const ticketData = tickets[ticketId];
+
+    if (ticketData) {
+      if (client.isReady()) {
+        const channel = client.channels.cache.get(ticketId);
+        if (channel) {
+           await channel.permissionOverwrites.edit(ticketData.userId, { SendMessages: true }).catch(() => {});
+           
+           const reopenEmbed = new EmbedBuilder()
+             .setDescription(`🔓 Dieses Ticket wurde von Moderator ${req.session.user.username} (via Dashboard) wieder geöffnet.`)
+             .setColor('#10b981');
+             
+           await channel.send({ embeds: [reopenEmbed] }).catch(() => {});
+        }
+      }
+      await db.reopenTicket(ticketId);
+    }
+    res.redirect(`/dashboard/tickets/${ticketId}`);
+  });
+
+  app.post('/dashboard/tickets/:id/delete', checkAuth, async (req, res) => {
+    const ticketId = req.params.id;
+    
+    if (client.isReady()) {
+      const channel = client.channels.cache.get(ticketId);
+      if (channel) {
+        await deleteTicketChannel(channel, req.session.user.username, client);
+      } else {
+        await db.deleteTicket(ticketId);
+      }
+    } else {
+      await db.deleteTicket(ticketId);
+    }
+    
+    res.redirect('/dashboard/tickets');
   });
 
   // Ban Management Routes (Mods/Team)
