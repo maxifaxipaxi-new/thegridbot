@@ -5,6 +5,7 @@ import { startBirthdayScheduler } from './scheduler.js';
 import { startDashboard } from './dashboard/server.js';
 import { startAnnouncementsScheduler } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
+import { startAutoDeleteScheduler } from './auto-delete.js';
 
 dotenv.config();
 
@@ -40,6 +41,9 @@ client.once('clientReady', () => {
 
   // Starte Dynamische Voice-Channels Handler
   setupDynamicVCs(client);
+
+  // Starte den Auto-Delete Scheduler für den Codes-Channel
+  startAutoDeleteScheduler(client);
 });
 
 // Event-Handler für Prefix-Commands (?message und ?embed)
