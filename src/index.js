@@ -49,6 +49,14 @@ client.once('clientReady', () => {
 // Event-Handler für Prefix-Commands (?message und ?embed)
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // Reagiere mit ⏳ in dem Codes-Channel
+  if (message.channel.id === '1519069474559496202') {
+    message.react('⏳').catch(err => {
+      console.error('Fehler beim Reagieren auf Code-Nachricht:', err);
+    });
+  }
+
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/ +/);
