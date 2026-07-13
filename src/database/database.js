@@ -12,7 +12,7 @@ class Database {
       return JSON.parse(data);
     } catch (error) {
       // Falls die Datei nicht existiert oder fehlerhaft ist, Standardstruktur zurückgeben
-      return { birthdays: {}, guilds: {}, dynamicChannels: {} };
+      return { birthdays: {}, guilds: {}, dynamicChannels: {}, users: {} };
     }
   }
 
@@ -213,6 +213,37 @@ class Database {
   async getTickets() {
     const data = await this._read();
     return data.tickets || {};
+  }
+
+  // LEVELING & XP
+  async getUser(userId) {
+    const data = await this._read();
+    if (!data.users) {
+      data.users = {};
+      await this._write(data);
+    }
+    if (!data.users[userId]) {
+      data.users[userId] = {
+        xp: 0,
+        level: 1,
+        lastMessageTimestamp: 0,
+        dailyVoicePoints: 0,
+        dailyVoiceReset: 0
+      };
+    }
+    return data.users[userId];
+  }
+
+  async updateUser(userId, userData) {
+    const data = await this._read();
+    if (!data.users) data.users = {};
+    data.users[userId] = userData;
+    await this._write(data);
+  }
+
+  async getAllUsers() {
+    const data = await this._read();
+    return data.users || {};
   }
 }
 

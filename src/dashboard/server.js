@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import fs from 'node:fs/promises';
 import { db } from '../database/database.js';
 import { deleteTicketChannel } from '../tickets.js';
+import { updateUserXPFromDashboard } from '../leveling.js';
 import { EmbedBuilder } from 'discord.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -63,6 +64,47 @@ export function startDashboard(client) {
       }
     }
     res.render('index', { clientId: CLIENT_ID, redirectUri: encodeURIComponent(REDIRECT_URI) });
+  });
+
+  app.get('/leaderboard', async (req, res) => {
+    try {
+      const allUsers = await db.getAllUsers();
+      const sortedUsers = Object.entries(allUsers)
+        .sort((a, b) => b[1].xp - a[1].xp)
+        .slice(0, 10);
+
+      // Try to fetch usernames and avatars from client cache
+      const leaderboardData = [];
+      for (const [userId, userData] of sortedUsers) {
+        let username = 'Unbekannt';
+        let avatarUrl = 'https://cdn.discordapp.com/embed/avatars/0.png';
+
+        if (client.isReady()) {
+          try {
+            const user = await client.users.fetch(userId);
+            if (user) {
+              username = user.username;
+              avatarUrl = user.displayAvatarURL();
+            }
+          } catch (e) {
+            // Ignore error if user is not found
+          }
+        }
+        
+        leaderboardData.push({
+          id: userId,
+          username,
+          avatarUrl,
+          xp: userData.xp,
+          level: userData.level || 0
+        });
+      }
+
+      res.render('leaderboard', { leaderboard: leaderboardData });
+    } catch (err) {
+      console.error('Fehler beim Laden des Leaderboards:', err);
+      res.status(500).send('Interner Serverfehler beim Laden des Leaderboards.');
+    }
   });
 
   app.get('/auth/discord', (req, res) => {
@@ -173,6 +215,12 @@ export function startDashboard(client) {
     } catch (err) {
       res.send("Fehler beim Lesen der Datenbank.");
     }
+  });
+
+  app.get('/dashboard/db/download', checkOwner, (req, res) => {
+    res.download(dbPath, 'db.json', (err) => {
+      if (err) console.error('Fehler beim Download:', err);
+    });
   });
 
   app.post('/dashboard/db', checkOwner, async (req, res) => {
@@ -427,6 +475,43 @@ export function startDashboard(client) {
       }
     }
     res.render('audit', { user: req.session.user, logs });
+  });
+
+  // XP Management Routes (Mods/Team)
+  app.get('/dashboard/xp', checkAuth, async (req, res) => {
+    let usersList = [];
+    try {
+      const allUsers = await db.getAllUsers();
+      
+      for (const [userId, userData] of Object.entries(allUsers)) {
+        let username = 'Unbekannt';
+        if (client.isReady()) {
+          try {
+            const u = await client.users.fetch(userId);
+            if (u) username = u.username;
+          } catch(e) {}
+        }
+        usersList.push({ id: userId, username, xp: userData.xp, level: userData.level || 0 });
+      }
+      
+      usersList.sort((a, b) => b.xp - a.xp);
+    } catch(err) {
+      console.error('Fehler beim Laden der XP Liste:', err);
+    }
+    res.render('xp_editor', { user: req.session.user, usersList, errorMsg: req.query.error, successMsg: req.query.success });
+  });
+
+  app.post('/dashboard/xp/edit', checkAuth, async (req, res) => {
+    const { userId, newXp } = req.body;
+    if (!userId || newXp === undefined) return res.redirect('/dashboard/xp?error=Bitte alle Felder ausfüllen');
+    
+    try {
+      await updateUserXPFromDashboard(client, userId, newXp);
+      res.redirect('/dashboard/xp?success=XP und Level erfolgreich aktualisiert');
+    } catch(err) {
+      console.error('Fehler beim Aktualisieren der XP:', err);
+      res.redirect('/dashboard/xp?error=Fehler beim Aktualisieren');
+    }
   });
 
   // Birthdays (Mods/Team)

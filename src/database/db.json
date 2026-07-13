@@ -39,5 +39,28 @@
       "yt:video:1M72Sq0GJSs"
     ]
   },
-  "dynamicChannels": {}
+  "dynamicChannels": {},
+  "users": {
+    "423481100313034754": {
+      "xp": 42,
+      "level": 0,
+      "lastMessageTimestamp": 1783961941568,
+      "dailyVoicePoints": 42,
+      "dailyVoiceReset": 20647
+    },
+    "460108009683681281": {
+      "xp": 26,
+      "level": 0,
+      "lastMessageTimestamp": 1783961941570,
+      "dailyVoicePoints": 42,
+      "dailyVoiceReset": 20647
+    },
+    "690113625767411768": {
+      "xp": 6001,
+      "level": 2,
+      "lastMessageTimestamp": 1783961941572,
+      "dailyVoicePoints": 42,
+      "dailyVoiceReset": 20647
+    }
+  }
 }

@@ -7,6 +7,8 @@ import { startAnnouncementsScheduler } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
 import { startAutoDeleteScheduler } from './auto-delete.js';
 import { handleTicketSetup, handleTicketButton } from './tickets.js';
+import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES } from './leveling.js';
+import { startBackupScheduler } from './backup.js';
 
 dotenv.config();
 
@@ -36,20 +38,26 @@ client.once('clientReady', () => {
   
   // Starte den Geburtstags-Scheduler
   startBirthdayScheduler(client);
-
-  // Starte den Announcements-Scheduler
   startAnnouncementsScheduler(client);
+  startAutoDeleteScheduler(client);
+  startBackupScheduler(client);
+  
+  // Dashboard starten
+  startDashboard(client);
 
-  // Starte Dynamische Voice-Channels Handler
+  // Dynamische Voice-Channels Handler
   setupDynamicVCs(client);
 
-  // Starte den Auto-Delete Scheduler für den Codes-Channel
-  startAutoDeleteScheduler(client);
+  // Starte Leveling (Voice-XP und Inaktivität)
+  setupLeveling(client);
 });
 
 // Event-Handler für Prefix-Commands (?message und ?embed)
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
+
+  // XP Handler aufrufen
+  await handleMessageXP(message);
 
   // Reagiere mit ⏳ in dem Codes-Channel
   if (message.channel.id === '1519069474559496202') {
@@ -220,14 +228,15 @@ client.on('interactionCreate', async (interaction) => {
           'Verantwortlich für die Datenverarbeitung des Bots ist die Serverleitung dieses Discord-Servers (**".grid Community"**).\n\n' +
           '### 2. Erhobene Daten und Verwendungszweck\n' +
           'Der Bot verarbeitet und speichert folgende Daten:\n' +
-          '• **Discord-User-ID:** Zur eindeutigen Zuordnung von Geburtstagen zu deinem Discord-Konto.\n' +
+          '• **Discord-User-ID:** Zur eindeutigen Zuordnung von Geburtstagen und XP-Werten zu deinem Discord-Konto.\n' +
           '• **Geburtstag (Tag & Monat):** Um automatische Glückwünsche am Geburtstag im konfigurierten Kanal zu senden.\n' +
+          '• **Erfahrungspunkte (XP) & Level:** Deine gesammelten XP, dein aktuelles Level sowie Zeitstempel deiner letzten Text- oder Voice-Aktivität zur Berechnung deines Ranks auf dem Leaderboard.\n' +
           '• **Server-Einstellungen:** Der Bot speichert zudem Gilden-IDs, Kanal-IDs sowie öffentliche Twitch-/YouTube-Namen für das Dashboard und die automatischen Ankündigungen (keine personenbezogenen Daten normaler Nutzer).\n\n' +
-          '*Rechtsgrundlage:* Die Verarbeitung erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (**Art. 6 Abs. 1 lit. a DSGVO**) durch die freiwillige Eingabe deines Geburtstags über den Befehl `/geburtstag`.\n\n' +
+          '*Rechtsgrundlage:* Die Verarbeitung erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (**Art. 6 Abs. 1 lit. a DSGVO**) durch die freiwillige Eingabe deines Geburtstags über den Befehl `/geburtstag` sowie durch deine aktive Nutzung des Chats und Voice-Chats.\n\n' +
           '### 3. Datenspeicherung & Sicherheit\n' +
           '• Alle Daten werden lokal in einer sicheren JSON-Datei (`db.json`) auf dem Server des Bot-Betreibers in Deutschland gespeichert.\n' +
           '• Es erfolgt **keine Weitergabe** der Daten an Dritte.\n' +
-          '• Es werden **keine** Chatnachrichten, IP-Adressen, Profile oder sonstige Metadaten dauerhaft protokolliert.\n\n' +
+          '• Es werden **keine** Inhalte von Chatnachrichten dauerhaft protokolliert, sondern lediglich ein Zeitstempel der letzten Nachricht für den XP-Cooldown.\n\n' +
           '### 4. Deine Rechte (Auskunft & Löschung)\n' +
           'Du hast das Recht:\n' +
           '• Auskunft über deine gespeicherten Daten zu verlangen.\n' +
@@ -309,7 +318,7 @@ client.on('interactionCreate', async (interaction) => {
 
       if (hasRole) {
         await interaction.reply({ 
-          content: 'Hier geht es zum Dashboard: https://thegrid.frogly.fun/dashboard/', 
+          content: 'Hier geht es zum Dashboard: https://my.thegridcom.xyz/dashboard/', 
           flags: MessageFlags.Ephemeral 
         });
       } else {
@@ -318,6 +327,82 @@ client.on('interactionCreate', async (interaction) => {
           flags: MessageFlags.Ephemeral 
         });
       }
+    }
+
+    // /level
+    else if (commandName === 'level') {
+      const user = await db.getUser(interaction.user.id);
+      const level = user.level || 0;
+      const xp = user.xp || 0;
+      const nextXp = getRequiredXP(level);
+      
+      let prevXp = 0;
+      if (level > 0) prevXp = LEVEL_THRESHOLDS[level];
+      
+      let progressBar = '';
+      if (nextXp === 'MAX') {
+         progressBar = '🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧';
+      } else {
+         const xpInLevel = xp - prevXp;
+         const xpNeeded = nextXp - prevXp;
+         const progressPercent = Math.min(Math.max(xpInLevel / xpNeeded, 0), 1);
+         const filledBars = Math.round(progressPercent * 10);
+         progressBar = '🟧'.repeat(filledBars) + '⬛'.repeat(10 - filledBars);
+      }
+      
+      const allUsers = await db.getAllUsers();
+      const sortedUsers = Object.entries(allUsers).sort((a, b) => b[1].xp - a[1].xp);
+      const rankIndex = sortedUsers.findIndex(u => u[0] === interaction.user.id);
+      const rank = rankIndex !== -1 ? rankIndex + 1 : 'Unbekannt';
+
+      const currentRole = level > 0 && LEVEL_ROLES[level] ? `<@&${LEVEL_ROLES[level]}>` : 'Kein Level';
+      let nextLevelText = 'Maximales Level erreicht! 🏆';
+      if (nextXp !== 'MAX') {
+         const nextRole = LEVEL_ROLES[level + 1] ? `<@&${LEVEL_ROLES[level + 1]}>` : `Level ${level + 1}`;
+         nextLevelText = `${nextRole} (noch ${nextXp - xp} XP)`;
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`XP Profil von ${interaction.user.username}`)
+        .setDescription(`**Aktuelles Level:** ${currentRole}\n**Nächstes Level:** ${nextLevelText}\n\n**Erfahrungspunkte:** ${xp} XP\n**Server Rank:** #${rank}\n\n**Fortschritt zum nächsten Level:**\n${progressBar}\n\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)`)
+        .setColor('#FFA500')
+        .setThumbnail(interaction.user.displayAvatarURL())
+        .setFooter({ 
+          text: '🫵 | the grid.', 
+          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+        });
+
+      await interaction.reply({ embeds: [embed] });
+    }
+
+    // /top
+    else if (commandName === 'top') {
+      const allUsers = await db.getAllUsers();
+      const sortedUsers = Object.entries(allUsers)
+        .sort((a, b) => b[1].xp - a[1].xp)
+        .slice(0, 10);
+
+      let description = '';
+      for (let i = 0; i < sortedUsers.length; i++) {
+        const userId = sortedUsers[i][0];
+        const xp = sortedUsers[i][1].xp;
+        description += `**#${i + 1}** <@${userId}> — **${xp} XP**\n`;
+      }
+
+      if (description === '') description = 'Noch keine XP verteilt!\n';
+      
+      description += '\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)';
+
+      const embed = new EmbedBuilder()
+        .setTitle('🏆 XP Leaderboard (Top 10)')
+        .setDescription(description)
+        .setColor('#FFA500')
+        .setFooter({ 
+          text: '🫵 | the grid.', 
+          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+        });
+
+      await interaction.reply({ embeds: [embed] });
     }
 
     // --- Dynamische Voice Channels Commands ---

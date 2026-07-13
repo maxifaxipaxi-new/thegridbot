@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Grid - XP Leaderboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* (Existing styles remain) */
+        :root {
+            --bg-color: #0f172a;
+            --accent-color: #f97316;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --rank-1: #fbbf24;
+            --rank-2: #94a3b8;
+            --rank-3: #b45309;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(249, 115, 22, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(56, 189, 248, 0.1), transparent 25%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--accent-color), #fb923c);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px;
+            box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+
+        .leaderboard-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 800px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+            margin-bottom: 32px;
+        }
+
+        .info-container {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-left: 4px solid var(--accent-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 800px;
+            padding: 24px;
+            margin-bottom: 40px;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .info-container h3 {
+            margin-bottom: 16px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 600px) {
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .info-card {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .info-card h4 {
+            color: var(--accent-color);
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .info-list {
+            list-style: none;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .info-list li {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .info-list li i {
+            color: var(--accent-color);
+            margin-top: 3px;
+            font-size: 12px;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .list-header {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px 120px;
+            padding: 20px 24px;
+            background: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 600px) {
+            .list-header {
+                grid-template-columns: 60px 1fr 80px;
+            }
+            .header-level {
+                display: none;
+            }
+        }
+
+        .list-item {
+            display: grid;
+            grid-template-columns: 80px 1fr 120px 120px;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.3s ease;
+        }
+
+        .list-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 600px) {
+            .list-item {
+                grid-template-columns: 60px 1fr 80px;
+                padding: 16px;
+            }
+            .item-level {
+                display: none;
+            }
+        }
+
+        .rank {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+
+        .list-item:nth-child(1) .rank { color: var(--rank-1); font-size: 24px; text-shadow: 0 0 10px rgba(251, 191, 36, 0.5); }
+        .list-item:nth-child(2) .rank { color: var(--rank-2); font-size: 22px; text-shadow: 0 0 10px rgba(148, 163, 184, 0.5); }
+        .list-item:nth-child(3) .rank { color: var(--rank-3); font-size: 20px; text-shadow: 0 0 10px rgba(180, 83, 9, 0.5); }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--glass-border);
+        }
+
+        .list-item:nth-child(1) .avatar { border-color: var(--rank-1); }
+        .list-item:nth-child(2) .avatar { border-color: var(--rank-2); }
+        .list-item:nth-child(3) .avatar { border-color: var(--rank-3); }
+
+        .username {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .xp-badge {
+            background: rgba(249, 115, 22, 0.15);
+            color: var(--accent-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .level {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .level-badge {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            margin-top: 10px;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .btn-back:hover {
+            color: var(--text-main);
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">🏆</div>
+        <h1>XP Leaderboard</h1>
+        <p class="subtitle">Die Top 10 aktivsten Member der .grid Community</p>
+    </div>
+
+    <div class="leaderboard-container">
+        <div class="list-header">
+            <div>Rank</div>
+            <div>User</div>
+            <div class="header-level">Level</div>
+            <div>XP</div>
+        </div>
+
+        <div class="list-body">
+            <% if (leaderboard && leaderboard.length > 0) { %>
+                <% leaderboard.forEach((user, index) => { %>
+                    <div class="list-item">
+                        <div class="rank">#<%= index + 1 %></div>
+                        <div class="user-info">
+                            <img src="<%= user.avatarUrl %>" alt="<%= user.username %>" class="avatar">
+                            <div class="username"><%= user.username %></div>
+                        </div>
+                        <div class="item-level">
+                            <% if (user.level > 0) { %>
+                                <span class="level-badge">Level <%= user.level %></span>
+                            <% } else { %>
+                                <span style="color: var(--text-muted); font-size: 13px;">-</span>
+                            <% } %>
+                        </div>
+                        <div>
+                            <span class="xp-badge"><%= user.xp.toLocaleString() %> XP</span>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div class="empty-state">
+                    <i class="fa-solid fa-ghost"></i>
+                    <p>Noch keine Erfahrungspunkte verteilt.</p>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <a href="/" class="btn-back">
+        <i class="fa-solid fa-arrow-left"></i> Zurück zur Startseite
+    </a>
+
+</body>
+</html>

@@ -82,6 +82,14 @@ const commands = [
     .setName('ticketsetup')
     .setDescription('Erstellt das Ticket-Panel im aktuellen Kanal (Nur für Moderatoren).')
     .setDefaultMemberPermissions(0), // requires admin/mod perms implicitly, but we also check role inside
+
+  new SlashCommandBuilder()
+    .setName('level')
+    .setDescription('Zeigt dein aktuelles Level und XP an.'),
+
+  new SlashCommandBuilder()
+    .setName('top')
+    .setDescription('Zeigt die Top 10 aktivsten User auf dem Server an.'),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {
