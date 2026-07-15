@@ -234,7 +234,7 @@ client.on('interactionCreate', async (interaction) => {
           '• **Server-Einstellungen:** Der Bot speichert zudem Gilden-IDs, Kanal-IDs sowie öffentliche Twitch-/YouTube-Namen für das Dashboard und die automatischen Ankündigungen (keine personenbezogenen Daten normaler Nutzer).\n\n' +
           '*Rechtsgrundlage:* Die Verarbeitung erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (**Art. 6 Abs. 1 lit. a DSGVO**) durch die freiwillige Eingabe deines Geburtstags über den Befehl `/geburtstag` sowie durch deine aktive Nutzung des Chats und Voice-Chats.\n\n' +
           '### 3. Datenspeicherung & Sicherheit\n' +
-          '• Alle Daten werden lokal in einer sicheren JSON-Datei (`db.json`) auf dem Server des Bot-Betreibers in Deutschland gespeichert.\n' +
+          '• Alle Daten werden lokal in einer sicheren SQLite-Datenbank (`db.sqlite`) auf dem Server des Bot-Betreibers in Deutschland gespeichert.\n' +
           '• Es erfolgt **keine Weitergabe** der Daten an Dritte.\n' +
           '• Es werden **keine** Inhalte von Chatnachrichten dauerhaft protokolliert, sondern lediglich ein Zeitstempel der letzten Nachricht für den XP-Cooldown.\n\n' +
           '### 4. Deine Rechte (Auskunft & Löschung)\n' +

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dbPath = path.join(__dirname, 'database', 'db.json');
+const dbPath = path.join(__dirname, 'database', 'db.sqlite');
 
 async function sendBackup(client, isInitial = false) {
   try {
@@ -14,7 +14,7 @@ async function sendBackup(client, isInitial = false) {
     
     if (channel && channel.isTextBased()) {
       const dateStr = new Date().toISOString().split('T')[0];
-      const attachment = new AttachmentBuilder(dbPath, { name: `db-backup-${dateStr}.json` });
+      const attachment = new AttachmentBuilder(dbPath, { name: `db-backup-${dateStr}.sqlite` });
       
       const title = isInitial ? '🔄 **Datenbank-Backup bei Bot-Start**' : '💾 **Tägliches Datenbank-Backup**';
       

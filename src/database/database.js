@@ -1,249 +1,279 @@
-import fs from 'node:fs/promises';
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, 'db.json');
+const dbPath = path.join(__dirname, 'db.sqlite');
 
 class Database {
-  async _read() {
-    try {
-      const data = await fs.readFile(dbPath, 'utf-8');
-      return JSON.parse(data);
-    } catch (error) {
-      // Falls die Datei nicht existiert oder fehlerhaft ist, Standardstruktur zurückgeben
-      return { birthdays: {}, guilds: {}, dynamicChannels: {}, users: {} };
-    }
+  constructor() {
+    this.dbPromise = this.init();
   }
 
-  async _write(data) {
-    await fs.writeFile(dbPath, JSON.stringify(data, null, 2), 'utf-8');
+  async init() {
+    const db = await open({
+      filename: dbPath,
+      driver: sqlite3.Database
+    });
+
+    // Create tables
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        xp INTEGER DEFAULT 0,
+        level INTEGER DEFAULT 1,
+        lastMessageTimestamp INTEGER DEFAULT 0,
+        dailyVoicePoints INTEGER DEFAULT 0,
+        dailyVoiceReset INTEGER DEFAULT 0
+      );
+      
+      CREATE TABLE IF NOT EXISTS birthdays (
+        userId TEXT PRIMARY KEY,
+        day INTEGER,
+        month INTEGER
+      );
+      
+      CREATE TABLE IF NOT EXISTS guilds (
+        id TEXT PRIMARY KEY,
+        birthdayChannelId TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS announcements_twitch (
+        username TEXT PRIMARY KEY
+      );
+      
+      CREATE TABLE IF NOT EXISTS announcements_youtube (
+        channelId TEXT PRIMARY KEY
+      );
+      
+      CREATE TABLE IF NOT EXISTS announcements_posted_streams (
+        streamId TEXT PRIMARY KEY,
+        timestamp INTEGER
+      );
+      
+      CREATE TABLE IF NOT EXISTS announcements_posted_videos (
+        videoId TEXT PRIMARY KEY,
+        timestamp INTEGER
+      );
+      
+      CREATE TABLE IF NOT EXISTS dynamic_channels (
+        channelId TEXT PRIMARY KEY,
+        ownerId TEXT
+      );
+      
+      CREATE TABLE IF NOT EXISTS tickets (
+        channelId TEXT PRIMARY KEY,
+        userId TEXT,
+        username TEXT,
+        createdAt INTEGER,
+        status TEXT
+      );
+    `);
+
+    return db;
   }
 
+  // --- Birthdays ---
   async setUserBirthday(userId, day, month) {
-    const data = await this._read();
-    data.birthdays[userId] = { day, month };
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('INSERT INTO birthdays (userId, day, month) VALUES (?, ?, ?) ON CONFLICT(userId) DO UPDATE SET day = excluded.day, month = excluded.month', [userId, day, month]);
   }
 
   async deleteUserBirthday(userId) {
-    const data = await this._read();
-    if (data.birthdays[userId]) {
-      delete data.birthdays[userId];
-      await this._write(data);
-      return true;
-    }
-    return false;
+    const db = await this.dbPromise;
+    const result = await db.run('DELETE FROM birthdays WHERE userId = ?', [userId]);
+    return result.changes > 0;
   }
 
   async getUserBirthday(userId) {
-    const data = await this._read();
-    return data.birthdays[userId] || null;
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT day, month FROM birthdays WHERE userId = ?', [userId]);
+    return row || null;
   }
 
   async getUsersWithBirthdayToday(day, month) {
-    const data = await this._read();
-    const users = [];
-    for (const [userId, bday] of Object.entries(data.birthdays)) {
-      if (bday.day === day && bday.month === month) {
-        users.push(userId);
-      }
-    }
-    return users;
+    const db = await this.dbPromise;
+    const rows = await db.all('SELECT userId FROM birthdays WHERE day = ? AND month = ?', [day, month]);
+    return rows.map(r => r.userId);
   }
 
+  // --- Guilds ---
   async setBirthdayChannel(guildId, channelId) {
-    const data = await this._read();
-    if (!data.guilds[guildId]) {
-      data.guilds[guildId] = {};
-    }
-    data.guilds[guildId].birthdayChannelId = channelId;
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('INSERT INTO guilds (id, birthdayChannelId) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET birthdayChannelId = excluded.birthdayChannelId', [guildId, channelId]);
   }
 
   async getBirthdayChannel(guildId) {
-    const data = await this._read();
-    return data.guilds[guildId]?.birthdayChannelId || null;
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT birthdayChannelId FROM guilds WHERE id = ?', [guildId]);
+    return row?.birthdayChannelId || null;
   }
 
   async getAllGuildConfigs() {
-    const data = await this._read();
-    return data.guilds;
+    const db = await this.dbPromise;
+    const rows = await db.all('SELECT id, birthdayChannelId FROM guilds');
+    const result = {};
+    for (const r of rows) result[r.id] = { birthdayChannelId: r.birthdayChannelId };
+    return result;
   }
 
-  // ANNOUNCEMENTS
+  // --- Announcements ---
   async getAnnouncementsConfig() {
-    const data = await this._read();
-    if (!data.announcements) {
-      data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
-      await this._write(data);
-    }
-    return data.announcements;
+    const db = await this.dbPromise;
+    const twitch = await db.all('SELECT username FROM announcements_twitch');
+    const youtube = await db.all('SELECT channelId FROM announcements_youtube');
+    const streams = await db.all('SELECT streamId FROM announcements_posted_streams ORDER BY timestamp DESC LIMIT 100');
+    const videos = await db.all('SELECT videoId FROM announcements_posted_videos ORDER BY timestamp DESC LIMIT 100');
+    
+    return {
+      twitch: twitch.map(r => r.username),
+      youtube: youtube.map(r => r.channelId),
+      postedStreams: streams.map(r => r.streamId),
+      postedVideos: videos.map(r => r.videoId)
+    };
   }
 
   async addTwitchStreamer(username) {
-    const data = await this._read();
-    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
-    if (!data.announcements.twitch.includes(username)) {
-      data.announcements.twitch.push(username);
-      await this._write(data);
-    }
+    const db = await this.dbPromise;
+    await db.run('INSERT OR IGNORE INTO announcements_twitch (username) VALUES (?)', [username]);
   }
 
   async removeTwitchStreamer(username) {
-    const data = await this._read();
-    if (!data.announcements) return;
-    data.announcements.twitch = data.announcements.twitch.filter(u => u !== username);
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM announcements_twitch WHERE username = ?', [username]);
   }
 
   async addYouTubeChannel(channelId) {
-    const data = await this._read();
-    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
-    if (!data.announcements.youtube.includes(channelId)) {
-      data.announcements.youtube.push(channelId);
-      await this._write(data);
-    }
+    const db = await this.dbPromise;
+    await db.run('INSERT OR IGNORE INTO announcements_youtube (channelId) VALUES (?)', [channelId]);
   }
 
   async removeYouTubeChannel(channelId) {
-    const data = await this._read();
-    if (!data.announcements) return;
-    data.announcements.youtube = data.announcements.youtube.filter(c => c !== channelId);
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM announcements_youtube WHERE channelId = ?', [channelId]);
   }
 
   async hasPostedStream(streamId) {
-    const config = await this.getAnnouncementsConfig();
-    return config.postedStreams.includes(streamId);
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT 1 FROM announcements_posted_streams WHERE streamId = ?', [streamId]);
+    return !!row;
   }
 
   async markStreamPosted(streamId) {
-    const data = await this._read();
-    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
-    data.announcements.postedStreams.push(streamId);
-    // Keep only last 100 to prevent unbounded growth
-    if (data.announcements.postedStreams.length > 100) {
-      data.announcements.postedStreams.shift();
-    }
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('INSERT OR IGNORE INTO announcements_posted_streams (streamId, timestamp) VALUES (?, ?)', [streamId, Date.now()]);
   }
 
   async hasPostedVideo(videoId) {
-    const config = await this.getAnnouncementsConfig();
-    return config.postedVideos.includes(videoId);
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT 1 FROM announcements_posted_videos WHERE videoId = ?', [videoId]);
+    return !!row;
   }
 
   async markVideoPosted(videoId) {
-    const data = await this._read();
-    if (!data.announcements) data.announcements = { twitch: [], youtube: [], postedStreams: [], postedVideos: [] };
-    data.announcements.postedVideos.push(videoId);
-    if (data.announcements.postedVideos.length > 100) {
-      data.announcements.postedVideos.shift();
-    }
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('INSERT OR IGNORE INTO announcements_posted_videos (videoId, timestamp) VALUES (?, ?)', [videoId, Date.now()]);
   }
 
-  // DYNAMIC VOICE CHANNELS
+  // --- Dynamic Voice Channels ---
   async addDynamicChannel(channelId, ownerId) {
-    const data = await this._read();
-    if (!data.dynamicChannels) data.dynamicChannels = {};
-    data.dynamicChannels[channelId] = ownerId;
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('INSERT INTO dynamic_channels (channelId, ownerId) VALUES (?, ?) ON CONFLICT(channelId) DO UPDATE SET ownerId = excluded.ownerId', [channelId, ownerId]);
   }
 
   async removeDynamicChannel(channelId) {
-    const data = await this._read();
-    if (!data.dynamicChannels) return;
-    if (data.dynamicChannels[channelId]) {
-      delete data.dynamicChannels[channelId];
-      await this._write(data);
-    }
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM dynamic_channels WHERE channelId = ?', [channelId]);
   }
 
   async getDynamicChannelOwner(channelId) {
-    const data = await this._read();
-    if (!data.dynamicChannels) return null;
-    return data.dynamicChannels[channelId] || null;
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT ownerId FROM dynamic_channels WHERE channelId = ?', [channelId]);
+    return row?.ownerId || null;
   }
 
   async isDynamicChannel(channelId) {
-    const data = await this._read();
-    if (!data.dynamicChannels) return false;
-    return !!data.dynamicChannels[channelId];
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT 1 FROM dynamic_channels WHERE channelId = ?', [channelId]);
+    return !!row;
   }
 
-  // TICKETS
+  // --- Tickets ---
   async createTicket(channelId, userId, username) {
-    const data = await this._read();
-    if (!data.tickets) data.tickets = {};
-    data.tickets[channelId] = {
-      userId,
-      username,
-      createdAt: Date.now(),
-      status: 'open'
-    };
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run('INSERT INTO tickets (channelId, userId, username, createdAt, status) VALUES (?, ?, ?, ?, ?) ON CONFLICT(channelId) DO UPDATE SET userId = excluded.userId, username = excluded.username, createdAt = excluded.createdAt, status = excluded.status', [channelId, userId, username, Date.now(), 'open']);
   }
 
   async closeTicket(channelId) {
-    const data = await this._read();
-    if (data.tickets && data.tickets[channelId]) {
-      data.tickets[channelId].status = 'closed';
-      await this._write(data);
-    }
+    const db = await this.dbPromise;
+    await db.run('UPDATE tickets SET status = ? WHERE channelId = ?', ['closed', channelId]);
   }
 
   async reopenTicket(channelId) {
-    const data = await this._read();
-    if (data.tickets && data.tickets[channelId]) {
-      data.tickets[channelId].status = 'open';
-      await this._write(data);
-    }
+    const db = await this.dbPromise;
+    await db.run('UPDATE tickets SET status = ? WHERE channelId = ?', ['open', channelId]);
   }
 
   async deleteTicket(channelId) {
-    const data = await this._read();
-    if (data.tickets && data.tickets[channelId]) {
-      delete data.tickets[channelId];
-      await this._write(data);
-    }
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM tickets WHERE channelId = ?', [channelId]);
   }
 
   async getTickets() {
-    const data = await this._read();
-    return data.tickets || {};
-  }
-
-  // LEVELING & XP
-  async getUser(userId) {
-    const data = await this._read();
-    if (!data.users) {
-      data.users = {};
-      await this._write(data);
-    }
-    if (!data.users[userId]) {
-      data.users[userId] = {
-        xp: 0,
-        level: 1,
-        lastMessageTimestamp: 0,
-        dailyVoicePoints: 0,
-        dailyVoiceReset: 0
+    const db = await this.dbPromise;
+    const rows = await db.all('SELECT * FROM tickets');
+    const result = {};
+    for (const r of rows) {
+      result[r.channelId] = {
+        userId: r.userId,
+        username: r.username,
+        createdAt: r.createdAt,
+        status: r.status
       };
     }
-    return data.users[userId];
+    return result;
+  }
+
+  // --- Leveling & XP ---
+  async getUser(userId) {
+    const db = await this.dbPromise;
+    let user = await db.get('SELECT xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset FROM users WHERE id = ?', [userId]);
+    if (!user) {
+      user = { xp: 0, level: 0, lastMessageTimestamp: 0, dailyVoicePoints: 0, dailyVoiceReset: 0 };
+      await db.run('INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset) VALUES (?, ?, ?, ?, ?, ?)', [userId, 0, 0, 0, 0, 0]);
+    }
+    return user;
   }
 
   async updateUser(userId, userData) {
-    const data = await this._read();
-    if (!data.users) data.users = {};
-    data.users[userId] = userData;
-    await this._write(data);
+    const db = await this.dbPromise;
+    await db.run(`
+      INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset)
+      VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        xp = excluded.xp,
+        level = excluded.level,
+        lastMessageTimestamp = excluded.lastMessageTimestamp,
+        dailyVoicePoints = excluded.dailyVoicePoints,
+        dailyVoiceReset = excluded.dailyVoiceReset
+    `, [userId, userData.xp, userData.level, userData.lastMessageTimestamp, userData.dailyVoicePoints, userData.dailyVoiceReset]);
   }
 
   async getAllUsers() {
-    const data = await this._read();
-    return data.users || {};
+    const db = await this.dbPromise;
+    const rows = await db.all('SELECT * FROM users');
+    const result = {};
+    for (const r of rows) {
+      result[r.id] = {
+        xp: r.xp,
+        level: r.level,
+        lastMessageTimestamp: r.lastMessageTimestamp,
+        dailyVoicePoints: r.dailyVoicePoints,
+        dailyVoiceReset: r.dailyVoiceReset
+      };
+    }
+    return result;
   }
 }
 

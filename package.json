@@ -15,7 +15,10 @@
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "multer": "^2.2.0",
     "node-cron": "^3.0.3",
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^6.0.1"
   }
 }

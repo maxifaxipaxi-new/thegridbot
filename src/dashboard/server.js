@@ -1,17 +1,28 @@
 import express from 'express';
 import session from 'express-session';
 import axios from 'axios';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import { db } from '../database/database.js';
 import { deleteTicketChannel } from '../tickets.js';
 import { updateUserXPFromDashboard } from '../leveling.js';
 import { EmbedBuilder } from 'discord.js';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const dbPath = path.join(__dirname, '..', 'database', 'db.json');
+const dbPath = path.join(__dirname, '..', 'database', 'db.sqlite');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, '..', 'database'));
+  },
+  filename: function (req, file, cb) {
+    cb(null, 'db.sqlite'); // Overwrite db.sqlite
+  }
+});
+const upload = multer({ storage: storage });
 
 export function startDashboard(client) {
   const app = express();
@@ -209,28 +220,23 @@ export function startDashboard(client) {
 
   // DB Editor Routes (Owner Only)
   app.get('/dashboard/db', checkOwner, async (req, res) => {
-    try {
-      const data = await fs.readFile(dbPath, 'utf-8');
-      res.render('db_editor', { user: req.session.user, dbContent: data });
-    } catch (err) {
-      res.send("Fehler beim Lesen der Datenbank.");
-    }
+    res.render('db_editor', { user: req.session.user, error: req.query.error, success: req.query.success });
   });
 
   app.get('/dashboard/db/download', checkOwner, (req, res) => {
-    res.download(dbPath, 'db.json', (err) => {
+    res.download(dbPath, 'db.sqlite', (err) => {
       if (err) console.error('Fehler beim Download:', err);
     });
   });
 
-  app.post('/dashboard/db', checkOwner, async (req, res) => {
+  app.post('/dashboard/db', checkOwner, upload.single('dbFile'), async (req, res) => {
     try {
-      const newContent = req.body.dbContent;
-      JSON.parse(newContent); // Validate JSON
-      await fs.writeFile(dbPath, newContent, 'utf-8');
-      res.redirect('/dashboard?success=Datenbank gespeichert');
+      if (!req.file) {
+        return res.redirect('/dashboard/db?error=Keine Datei ausgewählt.');
+      }
+      res.redirect('/dashboard/db?success=Datenbank hochgeladen! Bitte starte den Bot neu, um die neue Datenbank zu laden.');
     } catch (err) {
-      res.redirect('/dashboard?error=Ungültiges JSON oder Schreibfehler');
+      res.redirect('/dashboard/db?error=Fehler beim Hochladen der Datenbank.');
     }
   });
 

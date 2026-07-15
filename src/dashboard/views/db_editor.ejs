@@ -10,37 +10,31 @@
         </div>
 
         <main class="main-content">
-            <p style="color: var(--text-muted); margin-bottom: 24px;">Bearbeite die rohe `db.json` direkt im Browser. <strong style="color: var(--danger);">Achtung: Falsches JSON kann den Bot zum Abstürzen bringen!</strong></p>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Da wir nun **SQLite** verwenden, kannst du die Datenbank nicht mehr direkt als Text bearbeiten. Lade dir stattdessen die Datei `db.sqlite` herunter, bearbeite sie ggf. lokal mit einem Programm (z.B. *DB Browser for SQLite*) und lade sie anschließend hier wieder hoch.</p>
 
             <% if (locals.error) { %>
                 <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= error %></div>
             <% } %>
 
             <div class="panel" style="border-top: 4px solid var(--danger);">
-                <form action="/dashboard/db" method="POST">
-                    <div style="margin-bottom: 16px;">
-                        <textarea name="dbContent" id="dbContentArea" class="form-control" style="width: 100%; height: 500px; font-family: 'Courier New', Courier, monospace; background: rgba(0,0,0,0.4); color: #e2e8f0; resize: vertical;" spellcheck="false"><%= dbContent %></textarea>
-                    </div>
-                    <div style="display: flex; gap: 12px; justify-content: space-between; align-items: center;">
+                <form action="/dashboard/db" method="POST" enctype="multipart/form-data">
+                    <div style="display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 20px 0;">
                         <div>
-                            <a href="/dashboard/db/download" class="btn btn-outline" style="margin-right: 8px; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-download"></i> Herunterladen</a>
+                            <a href="/dashboard/db/download" class="btn btn-outline" style="margin-right: 8px; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-download"></i> SQLite DB Herunterladen</a>
                             <label class="btn btn-outline" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; margin: 0;">
-                                <i class="fa-solid fa-upload"></i> Hochladen
-                                <input type="file" accept=".json" style="display: none;" onchange="
+                                <i class="fa-solid fa-upload"></i> SQLite DB Hochladen (Ersetzt die aktuelle)
+                                <input type="file" name="dbFile" accept=".sqlite" style="display: none;" onchange="
                                     const file = this.files[0];
                                     if(file) {
-                                        const reader = new FileReader();
-                                        reader.onload = function(e) {
-                                            document.getElementById('dbContentArea').value = e.target.result;
-                                        };
-                                        reader.readAsText(file);
+                                        document.getElementById('fileNameDisplay').textContent = 'Ausgewählt: ' + file.name;
                                     }
                                 ">
                             </label>
+                            <span id="fileNameDisplay" style="margin-left: 12px; color: var(--text-muted); font-size: 14px;"></span>
                         </div>
                         <div style="display: flex; gap: 12px;">
                             <a href="/dashboard" class="btn btn-outline">Abbrechen</a>
-                            <button type="submit" class="btn btn-danger"><i class="fa-solid fa-floppy-disk"></i> Speichern</button>
+                            <button type="submit" class="btn btn-danger"><i class="fa-solid fa-floppy-disk"></i> Hochladen & Speichern</button>
                         </div>
                     </div>
                 </form>
