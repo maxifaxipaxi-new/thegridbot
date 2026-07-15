@@ -98,6 +98,16 @@ class Database {
     return rows.map(r => r.userId);
   }
 
+  async getAllBirthdays() {
+    const db = await this.dbPromise;
+    const rows = await db.all('SELECT userId, day, month FROM birthdays');
+    const result = {};
+    for (const r of rows) {
+      result[r.userId] = { day: r.day, month: r.month };
+    }
+    return result;
+  }
+
   // --- Guilds ---
   async setBirthdayChannel(guildId, channelId) {
     const db = await this.dbPromise;

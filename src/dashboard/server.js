@@ -522,9 +522,7 @@ export function startDashboard(client) {
 
   // Birthdays (Mods/Team)
   app.get('/dashboard/birthdays', checkAuth, async (req, res) => {
-    const data = await fs.readFile(dbPath, 'utf-8');
-    const parsed = JSON.parse(data);
-    const birthdays = parsed.birthdays || {};
+    const birthdays = await db.getAllBirthdays();
     res.render('birthdays', { user: req.session.user, birthdays, errorMsg: req.query.error, successMsg: req.query.success });
   });
 
