@@ -497,7 +497,13 @@ export function startDashboard(client) {
             if (u) username = u.username;
           } catch(e) {}
         }
-        usersList.push({ id: userId, username, xp: userData.xp, level: userData.level || 0 });
+        usersList.push({ 
+          id: userId, 
+          username, 
+          xp: userData.xp, 
+          level: userData.level || 0, 
+          hasBonus: userData.hasBonus === 1 
+        });
       }
       
       usersList.sort((a, b) => b.xp - a.xp);

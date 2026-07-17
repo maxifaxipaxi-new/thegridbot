@@ -3,7 +3,7 @@ import { EmbedBuilder } from 'discord.js';
 
 const COOLDOWN_MS = 60 * 1000; // 1 minute cooldown for messages
 const VOICE_INTERVAL_MS = 60 * 1000; // 1 minute interval for voice check
-const DAILY_VOICE_MAX = 60; // Max 60 voice points per day
+const DAILY_VOICE_MAX = 100; // Max 100 voice points per day
 const INACTIVITY_PENALTY = 10; // XP to deduct
 const INACTIVITY_DAYS = 3; // Days of inactivity before penalty starts
 
@@ -20,6 +20,16 @@ export const LEVEL_THRESHOLDS = {
   3: 7000,
   4: 15000
 };
+
+export async function checkGridBoost(client, userId) {
+  try {
+    const userData = await client.rest.get(`/users/${userId}`);
+    const tag = userData?.clan?.tag || null;
+    return tag && tag.toLowerCase() === 'grid';
+  } catch (err) {
+    return false;
+  }
+}
 
 export function setupLeveling(client) {
   // Voice XP Interval
@@ -45,11 +55,19 @@ export function setupLeveling(client) {
               }
 
               if (user.dailyVoicePoints < DAILY_VOICE_MAX) {
-                user.xp += 1; // 1 XP per minute
-                user.dailyVoicePoints += 1;
-                user.lastMessageTimestamp = now; // update activity
-                await checkLevelUp(client, guild, member, user);
-                await db.updateUser(memberId, user);
+                const hasTag = await checkGridBoost(client, memberId);
+                user.hasBonus = hasTag ? 1 : 0;
+                
+                const xpPerMin = hasTag ? 2 : 1;
+                
+                const xpToAdd = Math.min(xpPerMin, DAILY_VOICE_MAX - user.dailyVoicePoints);
+                if (xpToAdd > 0) {
+                  user.xp += xpToAdd; 
+                  user.dailyVoicePoints += xpToAdd;
+                  user.lastMessageTimestamp = now; // update activity
+                  await checkLevelUp(client, guild, member, user);
+                  await db.updateUser(memberId, user);
+                }
               }
             }
           }
@@ -88,7 +106,16 @@ export async function handleMessageXP(message) {
 
   const now = Date.now();
   if (now - user.lastMessageTimestamp > COOLDOWN_MS) {
-    const xpToAdd = Math.floor(Math.random() * 6) + 5; // 5 to 10 XP
+    let xpToAdd = Math.floor(Math.random() * 6) + 5; // 5 to 10 XP
+    
+    // Prüfe auf 'grid' Server-Tag via REST API für 50% mehr XP
+    const hasTag = await checkGridBoost(message.client, userId);
+    user.hasBonus = hasTag ? 1 : 0;
+    
+    if (hasTag) {
+      xpToAdd = Math.floor(xpToAdd * 1.5);
+    }
+    
     user.xp += xpToAdd;
     user.lastMessageTimestamp = now;
     

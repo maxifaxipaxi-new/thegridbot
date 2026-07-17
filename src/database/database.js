@@ -25,7 +25,8 @@ class Database {
         level INTEGER DEFAULT 1,
         lastMessageTimestamp INTEGER DEFAULT 0,
         dailyVoicePoints INTEGER DEFAULT 0,
-        dailyVoiceReset INTEGER DEFAULT 0
+        dailyVoiceReset INTEGER DEFAULT 0,
+        hasBonus INTEGER DEFAULT 0
       );
       
       CREATE TABLE IF NOT EXISTS birthdays (
@@ -70,6 +71,12 @@ class Database {
         status TEXT
       );
     `);
+
+    try {
+      await db.exec('ALTER TABLE users ADD COLUMN hasBonus INTEGER DEFAULT 0');
+    } catch (err) {
+      // Column might already exist, ignore error
+    }
 
     return db;
   }
@@ -248,10 +255,10 @@ class Database {
   // --- Leveling & XP ---
   async getUser(userId) {
     const db = await this.dbPromise;
-    let user = await db.get('SELECT xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset FROM users WHERE id = ?', [userId]);
+    let user = await db.get('SELECT xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus FROM users WHERE id = ?', [userId]);
     if (!user) {
-      user = { xp: 0, level: 0, lastMessageTimestamp: 0, dailyVoicePoints: 0, dailyVoiceReset: 0 };
-      await db.run('INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset) VALUES (?, ?, ?, ?, ?, ?)', [userId, 0, 0, 0, 0, 0]);
+      user = { xp: 0, level: 0, lastMessageTimestamp: 0, dailyVoicePoints: 0, dailyVoiceReset: 0, hasBonus: 0 };
+      await db.run('INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus) VALUES (?, ?, ?, ?, ?, ?, ?)', [userId, 0, 0, 0, 0, 0, 0]);
     }
     return user;
   }
@@ -259,15 +266,16 @@ class Database {
   async updateUser(userId, userData) {
     const db = await this.dbPromise;
     await db.run(`
-      INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         xp = excluded.xp,
         level = excluded.level,
         lastMessageTimestamp = excluded.lastMessageTimestamp,
         dailyVoicePoints = excluded.dailyVoicePoints,
-        dailyVoiceReset = excluded.dailyVoiceReset
-    `, [userId, userData.xp, userData.level, userData.lastMessageTimestamp, userData.dailyVoicePoints, userData.dailyVoiceReset]);
+        dailyVoiceReset = excluded.dailyVoiceReset,
+        hasBonus = excluded.hasBonus
+    `, [userId, userData.xp, userData.level, userData.lastMessageTimestamp, userData.dailyVoicePoints, userData.dailyVoiceReset, userData.hasBonus || 0]);
   }
 
   async getAllUsers() {
@@ -280,7 +288,8 @@ class Database {
         level: r.level,
         lastMessageTimestamp: r.lastMessageTimestamp,
         dailyVoicePoints: r.dailyVoicePoints,
-        dailyVoiceReset: r.dailyVoiceReset
+        dailyVoiceReset: r.dailyVoiceReset,
+        hasBonus: r.hasBonus
       };
     }
     return result;

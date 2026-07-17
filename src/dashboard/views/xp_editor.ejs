@@ -64,6 +64,7 @@
                                     <th style="padding: 12px 16px;">User</th>
                                     <th style="padding: 12px 16px;">Aktuelle XP</th>
                                     <th style="padding: 12px 16px;">Level</th>
+                                    <th style="padding: 12px 16px;">Bonus (+50%)</th>
                                     <th style="padding: 12px 16px; text-align: right;">Aktion</th>
                                 </tr>
                             </thead>
@@ -87,6 +88,13 @@
                                                     <span style="color: var(--text-muted);">-</span>
                                                 <% } %>
                                             </td>
+                                            <td style="padding: 16px;">
+                                                <% if (u.hasBonus) { %>
+                                                    <span style="color: #4ade80; font-weight: bold;"><i class="fa-solid fa-check"></i> Ja</span>
+                                                <% } else { %>
+                                                    <span style="color: var(--text-muted);"><i class="fa-solid fa-xmark"></i> Nein</span>
+                                                <% } %>
+                                            </td>
                                             <td style="padding: 16px; text-align: right;">
                                                 <form action="/dashboard/xp/edit" method="POST" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
                                                     <input type="hidden" name="userId" value="<%= u.id %>">
@@ -98,7 +106,7 @@
                                     <% }) %>
                                 <% } else { %>
                                     <tr>
-                                        <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        <td colspan="5" style="text-align: center; padding: 40px; color: var(--text-muted);">
                                             Keine User-Daten gefunden.
                                         </td>
                                     </tr>

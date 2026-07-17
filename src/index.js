@@ -7,7 +7,7 @@ import { startAnnouncementsScheduler } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
 import { startAutoDeleteScheduler } from './auto-delete.js';
 import { handleTicketSetup, handleTicketButton } from './tickets.js';
-import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES } from './leveling.js';
+import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost } from './leveling.js';
 import { startBackupScheduler } from './backup.js';
 
 dotenv.config();
@@ -332,6 +332,11 @@ client.on('interactionCreate', async (interaction) => {
     // /level
     else if (commandName === 'level') {
       const user = await db.getUser(interaction.user.id);
+      
+      // Bonus sofort überprüfen und updaten
+      const hasTag = await checkGridBoost(client, interaction.user.id);
+      user.hasBonus = hasTag ? 1 : 0;
+      await db.updateUser(interaction.user.id, user);
       const level = user.level || 0;
       const xp = user.xp || 0;
       const nextXp = getRequiredXP(level);
@@ -362,9 +367,13 @@ client.on('interactionCreate', async (interaction) => {
          nextLevelText = `${nextRole} (noch ${nextXp - xp} XP)`;
       }
 
+      let bonusText = hasTag 
+          ? '\n\n🎉 **Bonus aktiv!** Danke, dass du unseren Servertag verwendest. Du sammelst 50% mehr XP mit jeder Nachricht und 2x so viele in Voicechannels.' 
+          : '\n\n❌ **50% Bonus:** nicht aktiv (adoptiere unseren Servertag um mehr XP zu sammeln)';
+
       const embed = new EmbedBuilder()
         .setTitle(`XP Profil von ${interaction.user.username}`)
-        .setDescription(`**Aktuelles Level:** ${currentRole}\n**Nächstes Level:** ${nextLevelText}\n\n**Erfahrungspunkte:** ${xp} XP\n**Server Rank:** #${rank}\n\n**Fortschritt zum nächsten Level:**\n${progressBar}\n\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)`)
+        .setDescription(`**Aktuelles Level:** ${currentRole}\n**Nächstes Level:** ${nextLevelText}\n\n**Erfahrungspunkte:** ${xp} XP\n**Server Rank:** #${rank}\n\n**Fortschritt zum nächsten Level:**\n${progressBar}${bonusText}\n\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)`)
         .setColor('#FFA500')
         .setThumbnail(interaction.user.displayAvatarURL())
         .setFooter({ 
