@@ -1,8 +1,8 @@
-import { 
-  joinVoiceChannel, 
-  createAudioPlayer, 
-  createAudioResource, 
-  AudioPlayerStatus, 
+import {
+  joinVoiceChannel,
+  createAudioPlayer,
+  createAudioResource,
+  AudioPlayerStatus,
   VoiceConnectionStatus,
   getVoiceConnection
 } from '@discordjs/voice';
@@ -41,7 +41,7 @@ export async function startRadio(client, guildId, channelId) {
     player.on(AudioPlayerStatus.Idle, () => {
       playResource(player);
     });
-    
+
     player.on('error', error => {
       console.error(`Audio Player Error in guild ${guildId}:`, error.message);
       // Try to restart after error
@@ -89,7 +89,8 @@ export function stopRadio(guildId) {
 
 function playResource(player) {
   try {
-    const resource = createAudioResource(audioPath);
+    const resource = createAudioResource(audioPath, { inlineVolume: true });
+    resource.volume.setVolume(0.70); // 15% leiser (1.0 = 100%, 0.70 = 70%)
     player.play(resource);
   } catch (err) {
     console.error('Failed to play audio resource:', err);

@@ -10,6 +10,7 @@ import { handleTicketSetup, handleTicketButton } from './tickets.js';
 import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost } from './leveling.js';
 import { startBackupScheduler } from './backup.js';
 import { startRadio } from './radio.js';
+import { handleWaitingRoomJoin, handleWaitingRoomButton } from './waiting-room.js';
 
 dotenv.config();
 
@@ -144,9 +145,17 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// Event-Handler für Voice-State-Änderungen (für Warteraum)
+client.on('voiceStateUpdate', (oldState, newState) => {
+  handleWaitingRoomJoin(oldState, newState);
+});
+
 // Event-Handler für Slash-Commands und Buttons
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton()) {
+    if (interaction.customId.startsWith('move_waiter_')) {
+      return handleWaitingRoomButton(interaction);
+    }
     return handleTicketButton(interaction);
   }
 
