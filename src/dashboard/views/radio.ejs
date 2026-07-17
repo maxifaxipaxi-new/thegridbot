@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: '24/7 Radio Steuerung - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/radio' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">📻 24/7 Radio Bot</h1>
+        </div>
+
+        <main class="main-content">
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Steuere die Musikschleife (thegrid.mp3) im Voice-Channel</p>
+
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= errorMsg %></div>
+            <% } %>
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success"><i class="fa-solid fa-check-circle"></i> <%= successMsg %></div>
+            <% } %>
+
+            <div class="panel" style="border-top: 4px solid #10b981;">
+                <h3 style="margin-bottom: 16px;">Verbindungs-Status</h3>
+                <% if (currentRadioChannelId) { %>
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 16px; border-radius: 8px; margin-bottom: 24px; color: #10b981; display: flex; align-items: center; gap: 12px;">
+                        <i class="fa-solid fa-tower-broadcast fa-fade" style="font-size: 24px;"></i>
+                        <div>
+                            <strong>Live!</strong> Der Bot ist aktuell im Voice-Channel verbunden und spielt Musik.<br>
+                            <span style="font-size: 13px; opacity: 0.8;">Auto-Reconnect nach Neustart ist aktiv.</span>
+                        </div>
+                    </div>
+                    
+                    <form action="/dashboard/radio" method="POST">
+                        <input type="hidden" name="action" value="disconnect">
+                        <button type="submit" class="btn btn-danger"><i class="fa-solid fa-phone-slash"></i> Radio stoppen & Trennen</button>
+                    </form>
+                <% } else { %>
+                    <div style="background: rgba(255, 255, 255, 0.05); padding: 16px; border-radius: 8px; margin-bottom: 24px; color: var(--text-muted); display: flex; align-items: center; gap: 12px;">
+                        <i class="fa-solid fa-microphone-slash" style="font-size: 24px;"></i>
+                        <div>
+                            <strong>Getrennt.</strong> Das Radio ist momentan deaktiviert.
+                        </div>
+                    </div>
+
+                    <form action="/dashboard/radio" method="POST" style="display: flex; gap: 12px; align-items: center;">
+                        <input type="hidden" name="action" value="connect">
+                        <select name="channelId" class="form-control" style="max-width: 300px;" required>
+                            <option value="">-- Voice Channel wählen --</option>
+                            <% voiceChannels.forEach(c => { %>
+                                <option value="<%= c.id %>">🔊 <%= c.name %></option>
+                            <% }) %>
+                        </select>
+                        <button type="submit" class="btn btn-primary" style="background: #10b981;"><i class="fa-solid fa-phone"></i> Verbinden & Starten</button>
+                    </form>
+                <% } %>
+            </div>
+            
+            <div class="panel" style="margin-top: 24px;">
+                <h4 style="margin-bottom: 12px;"><i class="fa-solid fa-circle-info"></i> Wichtige Hinweise</h4>
+                <ul style="color: var(--text-muted); font-size: 14px; line-height: 1.6; padding-left: 20px;">
+                    <li>Die Audiodatei <code>thegrid.mp3</code> muss im Verzeichnis <code>/src/assets/</code> auf dem Server liegen.</li>
+                    <li>Sobald du den Bot hier verbindest, wird er sich den Channel merken und sich auch nach einem Bot-Update oder Absturz <strong>automatisch wieder verbinden</strong>.</li>
+                    <li>Wenn der Bot manuell vom Channel gekickt wird (per Discord App), solltest du ihn hier im Dashboard einmal trennen und neu verbinden.</li>
+                </ul>
+            </div>
+
+        </main>
+    </div>
+</body>
+</html>

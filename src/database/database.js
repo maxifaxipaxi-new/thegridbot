@@ -37,7 +37,8 @@ class Database {
       
       CREATE TABLE IF NOT EXISTS guilds (
         id TEXT PRIMARY KEY,
-        birthdayChannelId TEXT
+        birthdayChannelId TEXT,
+        radioChannelId TEXT
       );
       
       CREATE TABLE IF NOT EXISTS announcements_twitch (
@@ -77,6 +78,10 @@ class Database {
     } catch (err) {
       // Column might already exist, ignore error
     }
+
+    try {
+      await db.exec('ALTER TABLE guilds ADD COLUMN radioChannelId TEXT');
+    } catch (err) {}
 
     return db;
   }
@@ -124,7 +129,23 @@ class Database {
   async getBirthdayChannel(guildId) {
     const db = await this.dbPromise;
     const row = await db.get('SELECT birthdayChannelId FROM guilds WHERE id = ?', [guildId]);
-    return row?.birthdayChannelId || null;
+    return row ? row.birthdayChannelId : null;
+  }
+
+  async setRadioChannel(guildId, channelId) {
+    const db = await this.dbPromise;
+    if (channelId === null) {
+      // Disconnect/Remove radio channel
+      await db.run('INSERT INTO guilds (id, radioChannelId) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET radioChannelId = NULL', [guildId, null]);
+    } else {
+      await db.run('INSERT INTO guilds (id, radioChannelId) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET radioChannelId = excluded.radioChannelId', [guildId, channelId]);
+    }
+  }
+
+  async getRadioChannel(guildId) {
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT radioChannelId FROM guilds WHERE id = ?', [guildId]);
+    return row ? row.radioChannelId : null;
   }
 
   async getAllGuildConfigs() {

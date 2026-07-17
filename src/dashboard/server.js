@@ -9,6 +9,7 @@ import { deleteTicketChannel } from '../tickets.js';
 import { updateUserXPFromDashboard } from '../leveling.js';
 import { EmbedBuilder } from 'discord.js';
 import multer from 'multer';
+import { startRadio, stopRadio } from '../radio.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -590,6 +591,53 @@ export function startDashboard(client) {
     res.render('tos');
   });
 
+  // --- RADIO MANAGEMENT ---
+  app.get('/dashboard/radio', checkOwner, async (req, res) => {
+    const guild = client.guilds.cache.get('1294669609349283925');
+    let voiceChannels = [];
+    if (guild) {
+      voiceChannels = guild.channels.cache
+        .filter(c => c.isVoiceBased())
+        .map(c => ({ id: c.id, name: c.name }));
+    }
+    const currentRadioChannelId = await db.getRadioChannel('1294669609349283925');
+    
+    res.render('radio', { 
+      user: req.session.user, 
+      voiceChannels, 
+      currentRadioChannelId,
+      errorMsg: req.query.error, 
+      successMsg: req.query.success 
+    });
+  });
+
+  app.post('/dashboard/radio', checkOwner, async (req, res) => {
+    const { action, channelId } = req.body;
+    const guildId = '1294669609349283925';
+
+    try {
+      if (action === 'connect') {
+        if (!channelId) return res.redirect('/dashboard/radio?error=Bitte wähle einen Kanal aus.');
+        
+        // Save to DB and Start
+        await db.setRadioChannel(guildId, channelId);
+        await startRadio(client, guildId, channelId);
+        
+        return res.redirect('/dashboard/radio?success=Bot erfolgreich verbunden und spielt Radio!');
+      } else if (action === 'disconnect') {
+        // Remove from DB and Stop
+        await db.setRadioChannel(guildId, null);
+        stopRadio(guildId);
+        
+        return res.redirect('/dashboard/radio?success=Bot erfolgreich vom Voice getrennt.');
+      }
+    } catch (err) {
+      console.error('Fehler beim Radio:', err);
+      return res.redirect('/dashboard/radio?error=Es gab einen Fehler bei der Aktion.');
+    }
+  });
+
+  // Server Start
   app.listen(PORT, () => {
     console.log(`Dashboard Web Server läuft auf Port ${PORT}`);
   });

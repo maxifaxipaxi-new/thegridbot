@@ -9,6 +9,7 @@ import { startAutoDeleteScheduler } from './auto-delete.js';
 import { handleTicketSetup, handleTicketButton } from './tickets.js';
 import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost } from './leveling.js';
 import { startBackupScheduler } from './backup.js';
+import { startRadio } from './radio.js';
 
 dotenv.config();
 
@@ -24,7 +25,7 @@ const client = new Client({
 
 const PREFIX = '?';
 
-client.once('clientReady', () => {
+client.once('clientReady', async () => {
   console.log(`Bot ist online! Eingeloggt als ${client.user.tag}`);
   
   // Setze Status auf "Bitte nicht stören" (dnd) und Aktivität auf "Schaut zu .grid Community"
@@ -50,6 +51,16 @@ client.once('clientReady', () => {
 
   // Starte Leveling (Voice-XP und Inaktivität)
   setupLeveling(client);
+
+  // Setup Radio for all guilds
+  const guilds = await db.getAllGuildConfigs();
+  for (const guildId of Object.keys(guilds)) {
+    const radioChannelId = await db.getRadioChannel(guildId);
+    if (radioChannelId) {
+      console.log(`Starte Radio in Channel ${radioChannelId} für Guild ${guildId}...`);
+      startRadio(client, guildId, radioChannelId);
+    }
+  }
 });
 
 // Event-Handler für Prefix-Commands (?message und ?embed)
