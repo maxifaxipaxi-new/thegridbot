@@ -380,7 +380,7 @@ class Database {
     try {
       await db.run(`INSERT INTO redeem_history (userId, code, redeemedAt) VALUES (?, ?, ?)`, [userId, code, Date.now()]);
       await db.run(
-        `INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVocieMinutes) 
+        `INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints) 
          VALUES (?, ?, 1, 0, 0)
          ON CONFLICT(id) DO UPDATE SET xp = xp + ?`,
         [userId, xp, xp]
