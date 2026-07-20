@@ -59,6 +59,21 @@ class Database {
         timestamp INTEGER
       );
       
+      CREATE TABLE IF NOT EXISTS redeem_codes (
+        code TEXT PRIMARY KEY,
+        xp INTEGER,
+        active INTEGER DEFAULT 0,
+        show_in_stream INTEGER DEFAULT 0,
+        createdAt INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS redeem_history (
+        userId TEXT,
+        code TEXT,
+        redeemedAt INTEGER,
+        PRIMARY KEY (userId, code)
+      );
+
       CREATE TABLE IF NOT EXISTS dynamic_channels (
         channelId TEXT PRIMARY KEY,
         ownerId TEXT
@@ -314,6 +329,67 @@ class Database {
       };
     }
     return result;
+  }
+  // ==========================================
+  // REDEEM CODES (Creator Program)
+  // ==========================================
+
+  async createRedeemCode(code, xp) {
+    const db = await this.dbPromise;
+    const result = await db.run(
+      `INSERT INTO redeem_codes (code, xp, active, show_in_stream, createdAt) VALUES (?, ?, 0, 0, ?)`,
+      [code, xp, Date.now()]
+    );
+    return result.lastID;
+  }
+
+  async getAllRedeemCodes() {
+    const db = await this.dbPromise;
+    const rows = await db.all(`SELECT * FROM redeem_codes ORDER BY createdAt DESC`);
+    return rows || [];
+  }
+
+  async getRedeemCode(code) {
+    const db = await this.dbPromise;
+    const row = await db.get(`SELECT * FROM redeem_codes WHERE code = ?`, [code]);
+    return row;
+  }
+
+  async updateRedeemCode(code, active, show_in_stream) {
+    const db = await this.dbPromise;
+    await db.run(
+      `UPDATE redeem_codes SET active = ?, show_in_stream = ? WHERE code = ?`,
+      [active, show_in_stream, code]
+    );
+  }
+
+  async deleteRedeemCode(code) {
+    const db = await this.dbPromise;
+    await db.run(`DELETE FROM redeem_codes WHERE code = ?`, [code]);
+  }
+
+  async hasUserRedeemedCode(userId, code) {
+    const db = await this.dbPromise;
+    const row = await db.get(`SELECT * FROM redeem_history WHERE userId = ? AND code = ?`, [userId, code]);
+    return !!row;
+  }
+
+  async redeemCodeForUser(userId, code, xp) {
+    const db = await this.dbPromise;
+    await db.run('BEGIN TRANSACTION');
+    try {
+      await db.run(`INSERT INTO redeem_history (userId, code, redeemedAt) VALUES (?, ?, ?)`, [userId, code, Date.now()]);
+      await db.run(
+        `INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVocieMinutes) 
+         VALUES (?, ?, 1, 0, 0)
+         ON CONFLICT(id) DO UPDATE SET xp = xp + ?`,
+        [userId, xp, xp]
+      );
+      await db.run('COMMIT');
+    } catch (err) {
+      await db.run('ROLLBACK');
+      throw err;
+    }
   }
 }
 

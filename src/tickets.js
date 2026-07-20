@@ -18,7 +18,7 @@ export async function handleTicketSetup(interaction) {
     .setTitle('🎫 Support Ticket')
     .setDescription('Klicke auf den Button unten, um ein privates Ticket zu erstellen. Unser Team wird sich schnellstmöglich um dein Anliegen kümmern.')
     .setColor('#FFA500')
-    .setFooter({ text: '🫵 | the grid.', iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless' });
+    .setFooter({ text: '🫵 | the grid.', iconURL: 'https://my.thegridcom.xyz/public/logo.png' });
 
   const row = new ActionRowBuilder()
     .addComponents(
@@ -109,7 +109,7 @@ export async function handleTicketButton(interaction) {
         .setTitle('🎫 Ticket eröffnet')
         .setDescription(`Willkommen im Support, ${user}! Bitte beschreibe dein Anliegen.\nEin Team-Mitglied wird dir bald antworten.`)
         .setColor('#FFA500')
-        .setFooter({ text: '🫵 | the grid.', iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless' });
+        .setFooter({ text: '🫵 | the grid.', iconURL: 'https://my.thegridcom.xyz/public/logo.png' });
 
       const row = new ActionRowBuilder()
         .addComponents(

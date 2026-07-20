@@ -136,7 +136,7 @@ client.on('messageCreate', async (message) => {
       .setTimestamp()
       .setFooter({ 
         text: '🫵 | the grid.', 
-        iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+        iconURL: 'https://my.thegridcom.xyz/public/logo.png'
       });
 
     await message.channel.send({ embeds: [embed] }).catch(err => {
@@ -183,7 +183,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -210,7 +210,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -267,7 +267,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -288,7 +288,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -307,7 +307,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -325,7 +325,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -346,6 +346,33 @@ client.on('interactionCreate', async (interaction) => {
           content: 'nanana nur für echte frösche erlaubt.', 
           flags: MessageFlags.Ephemeral 
         });
+      }
+    }
+
+    // /redeem
+    else if (commandName === 'redeem') {
+      const codeInput = interaction.options.getString('code').toUpperCase();
+      
+      const codeData = await db.getRedeemCode(codeInput);
+      if (!codeData) {
+        return interaction.reply({ content: '❌ Dieser Code existiert nicht oder ist ungültig.', flags: MessageFlags.Ephemeral });
+      }
+
+      if (codeData.active !== 1) {
+        return interaction.reply({ content: '❌ Dieser Code ist derzeit deaktiviert und kann nicht mehr eingelöst werden.', flags: MessageFlags.Ephemeral });
+      }
+
+      const hasRedeemed = await db.hasUserRedeemedCode(interaction.user.id, codeInput);
+      if (hasRedeemed) {
+        return interaction.reply({ content: '❌ Du hast diesen Code bereits eingelöst!', flags: MessageFlags.Ephemeral });
+      }
+
+      try {
+        await db.redeemCodeForUser(interaction.user.id, codeInput, codeData.xp);
+        await interaction.reply({ content: `✅ Code erfolgreich eingelöst! Du hast **${codeData.xp} XP** erhalten!`, flags: MessageFlags.Ephemeral });
+      } catch (err) {
+        console.error('Fehler beim Einlösen des Codes:', err);
+        await interaction.reply({ content: '❌ Es gab einen Fehler beim Einlösen des Codes.', flags: MessageFlags.Ephemeral });
       }
     }
 
@@ -398,7 +425,7 @@ client.on('interactionCreate', async (interaction) => {
         .setThumbnail(interaction.user.displayAvatarURL())
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -428,7 +455,7 @@ client.on('interactionCreate', async (interaction) => {
         .setColor('#FFA500')
         .setFooter({ 
           text: '🫵 | the grid.', 
-          iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });

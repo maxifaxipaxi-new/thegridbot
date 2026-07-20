@@ -1,6 +1,6 @@
 <nav class="sidebar">
     <div class="sidebar-header">
-        <img src="https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless" alt="Logo">
+        <img src="/public/logo.png" alt="Logo">
         <a href="/dashboard" class="sidebar-brand">the <span>grid.</span></a>
     </div>
 
@@ -43,6 +43,10 @@
             <a href="/dashboard/radio" class="nav-item <%= locals.currentPath === '/dashboard/radio' ? 'active' : '' %>" style="border-left: 2px solid #10b981; border-radius: 0 8px 8px 0;">
                 <i class="fa-solid fa-tower-broadcast" style="color: #10b981;"></i>
                 <span>Radio 24/7</span>
+            </a>
+            <a href="/dashboard/creator-program" class="nav-item <%= locals.currentPath === '/dashboard/creator-program' ? 'active' : '' %>" style="border-left: 2px solid #8b5cf6; border-radius: 0 8px 8px 0;">
+                <i class="fa-solid fa-gift" style="color: #8b5cf6;"></i>
+                <span>Stream XP Drops</span>
             </a>
         <% } %>
     </div>

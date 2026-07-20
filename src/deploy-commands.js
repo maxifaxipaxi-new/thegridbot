@@ -90,6 +90,15 @@ const commands = [
   new SlashCommandBuilder()
     .setName('top')
     .setDescription('Zeigt die Top 10 aktivsten User auf dem Server an.'),
+
+  new SlashCommandBuilder()
+    .setName('redeem')
+    .setDescription('Löse einen aktiven XP-Code aus dem Stream ein.')
+    .addStringOption(option =>
+      option.setName('code')
+        .setDescription('Der Code aus dem Stream')
+        .setRequired(true)
+    ),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {

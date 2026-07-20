@@ -92,7 +92,7 @@ export async function checkBirthdays(client) {
           .setTimestamp()
           .setFooter({ 
             text: '🫵 | the grid.', 
-            iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
           });
 
         await channel.send({

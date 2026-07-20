@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Creator Program - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/creator-program' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">Creator Program (XP Codes)</h1>
+        </div>
+
+        <main class="main-content">
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Erstelle neue Redeem Codes, die Creator in ihrem Stream einblenden können. Nutzer können den aktiven Code per `/redeem` einlösen, um XP zu erhalten.</p>
+
+            <% if (locals.error) { %>
+                <div class="alert alert-error" style="margin-bottom: 20px;"><i class="fa-solid fa-triangle-exclamation"></i> <%= error %></div>
+            <% } %>
+
+            <div class="dashboard-card" style="margin-bottom: 32px;">
+                <h3>Neuen Code generieren</h3>
+                <form action="/api/creator-program/codes" method="POST" style="margin-top: 16px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label class="form-label" for="code">Code (Optional, leer für Random 8 Zeichen)</label>
+                        <input type="text" id="code" name="code" class="form-control" placeholder="z.B. GRID-LIVE-123">
+                    </div>
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label class="form-label" for="xp">XP Menge</label>
+                        <input type="number" id="xp" name="xp" class="form-control" placeholder="z.B. 100" value="100" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Erstellen</button>
+                </form>
+            </div>
+
+            <div class="dashboard-card">
+                <h3>Alle Codes</h3>
+                <div class="table-container" style="margin-top: 16px;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>XP</th>
+                                <th>Einlösbar? (Aktiv)</th>
+                                <th>Im Stream Overlay?</th>
+                                <th>Erstellt am</th>
+                                <th>Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (codes && codes.length > 0) { %>
+                                <% codes.forEach(code => { %>
+                                    <tr>
+                                        <td><strong><%= code.code %></strong></td>
+                                        <td><%= code.xp %> XP</td>
+                                        <td>
+                                            <% if (code.active) { %>
+                                                <span class="badge badge-success">Ja</span>
+                                            <% } else { %>
+                                                <span class="badge badge-secondary">Nein</span>
+                                            <% } %>
+                                        </td>
+                                        <td>
+                                            <% if (code.show_in_stream) { %>
+                                                <span class="badge badge-success">Sichtbar</span>
+                                            <% } else { %>
+                                                <span class="badge badge-secondary">Versteckt</span>
+                                            <% } %>
+                                        </td>
+                                        <td><%= new Date(code.createdAt).toLocaleString('de-DE') %></td>
+                                        <td>
+                                            <div style="display: flex; gap: 8px;">
+                                                <form action="/api/creator-program/codes/<%= code.code %>/update" method="POST" style="display: flex; gap: 8px; align-items: center; background: rgba(255,255,255,0.03); padding: 4px 8px; border-radius: 4px;">
+                                                    <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer;">
+                                                        <input type="checkbox" name="active" <%= code.active ? 'checked' : '' %>> Aktiv (Einlösbar)
+                                                    </label>
+                                                    <label style="display: flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer;">
+                                                        <input type="checkbox" name="show_in_stream" <%= code.show_in_stream ? 'checked' : '' %>> Overlay sichtbar
+                                                    </label>
+                                                    <button type="submit" class="btn btn-primary" style="padding: 4px 8px; font-size: 12px; min-height: auto;">Speichern</button>
+                                                </form>
+                                                
+                                                <form action="/api/creator-program/codes/<%= code.code %>/delete" method="POST" onsubmit="return confirm('Wirklich löschen?');">
+                                                    <button type="submit" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px; min-height: auto;"><i class="fa-solid fa-trash"></i></button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted);">Keine Codes gefunden.</td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

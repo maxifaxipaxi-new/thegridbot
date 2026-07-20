@@ -184,7 +184,7 @@ async function checkLevelUp(client, guild, member, user) {
          .setTitle(levelTitle)
          .setDescription(levelDesc)
          .setColor('#f97316')
-         .setThumbnail('https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless');
+         .setThumbnail('https://my.thegridcom.xyz/public/logo.png');
        await member.send({ embeds: [embed] }).catch(() => {});
     } catch(e) {}
   } else if (newLevel < (user.level || 0)) {

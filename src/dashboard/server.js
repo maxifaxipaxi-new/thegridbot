@@ -333,7 +333,7 @@ export function startDashboard(client) {
           .setColor('#FFA500')
           .setFooter({ 
             text: `🫵 | the grid. | Geantwortet von: ${req.session.user.username}`, 
-            iconURL: 'https://images-ext-1.discordapp.net/external/R5SJEWiQb8Qhdj8qYdHWNdhKKufBHGDAFm99OTi7WRc/https/imgur.com/p9YGWp5.png?format=webp&quality=lossless'
+            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
           });
         
         await channel.send({ embeds: [embed] }).catch(err => console.error('Fehler beim Senden in Ticket:', err));
@@ -407,6 +407,109 @@ export function startDashboard(client) {
 
   // Ban Management Routes (Mods/Team)
   app.get('/dashboard/bans', checkAuth, async (req, res) => {
+    let bans = [];
+    if (client.isReady()) {
+      try {
+        const guild = await client.guilds.fetch(GUILD_ID);
+        const fetchedBans = await guild.bans.fetch();
+        bans = fetchedBans.map(ban => ({
+          user: ban.user.tag,
+          userId: ban.user.id,
+          reason: ban.reason || 'Kein Grund angegeben'
+        }));
+      } catch (err) {
+        console.error('Fehler beim Abrufen der Bans:', err);
+      }
+    }
+    res.render('bans', { user: req.session.user, bans });
+  });
+
+   // ==========================================
+  // CREATOR PROGRAM (Redeem Codes)
+  // ==========================================
+
+  app.get('/dashboard/creator-program', checkAuth, async (req, res) => {
+    try {
+      const codes = await db.getAllRedeemCodes();
+      res.render('creator_admin', { user: req.session.user, codes });
+    } catch (err) {
+      res.render('creator_admin', { user: req.session.user, codes: [], error: 'Fehler beim Laden der Codes.' });
+    }
+  });
+
+  app.post('/api/creator-program/codes', checkAuth, async (req, res) => {
+    try {
+      let { code, xp } = req.body;
+      if (!code) {
+        // Generate random 8 chars
+        code = Math.random().toString(36).substring(2, 10).toUpperCase();
+      }
+      if (!xp || isNaN(xp)) xp = 100;
+      
+      await db.createRedeemCode(code, parseInt(xp, 10));
+      res.redirect('/dashboard/creator-program');
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Fehler beim Erstellen des Codes');
+    }
+  });
+
+  app.post('/api/creator-program/codes/:code/update', checkAuth, async (req, res) => {
+    try {
+      const code = req.params.code;
+      const active = req.body.active === 'on' ? 1 : 0;
+      const show_in_stream = req.body.show_in_stream === 'on' ? 1 : 0;
+      
+      // If setting show_in_stream to 1, deactivate others from stream
+      if (show_in_stream === 1) {
+        const dbInstance = await db.dbPromise;
+        await dbInstance.run(`UPDATE redeem_codes SET show_in_stream = 0`);
+      }
+      
+      await db.updateRedeemCode(code, active, show_in_stream);
+      res.redirect('/dashboard/creator-program');
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Fehler beim Aktualisieren des Codes');
+    }
+  });
+
+  app.post('/api/creator-program/codes/:code/delete', checkAuth, async (req, res) => {
+    try {
+      await db.deleteRedeemCode(req.params.code);
+      res.redirect('/dashboard/creator-program');
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Fehler beim Löschen des Codes');
+    }
+  });
+
+  // OBS Overlay View (No auth required)
+  app.get('/creator-program/overlay', (req, res) => {
+    res.render('creator_overlay');
+  });
+
+  // API for OBS Overlay polling
+  app.get('/api/creator-program/redeem/current', async (req, res) => {
+    try {
+      const codes = await db.getAllRedeemCodes();
+      // Find the first code that is both active and show_in_stream
+      const currentCode = codes.find(c => c.active === 1 && c.show_in_stream === 1);
+      
+      if (currentCode) {
+        res.json({ active: true, code: currentCode.code });
+      } else {
+        res.json({ active: false });
+      }
+    } catch (err) {
+      res.status(500).json({ active: false });
+    }
+  });
+
+  // ==========================================
+  // LEVELING / XP
+  // ==========================================
+  app.get('/dashboard/leveling', checkAuth, async (req, res) => {
     let bans = [];
     if (client.isReady()) {
       try {

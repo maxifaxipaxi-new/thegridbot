@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBS Overlay - Creator Program</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Important for OBS */
+            background-color: transparent !important; /* Transparent background */
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 20px;
+        }
+
+        #code-container {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 165, 0, 0.3); /* Orange border */
+            border-left: 4px solid #FFA500;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            display: none; /* KOMPLETT BLANK STARTEN */
+            align-items: center;
+            gap: 16px;
+            transform: translateY(-150%);
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #code-container.show {
+            display: flex;
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        @keyframes pulseLogo {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 15px 5px rgba(255, 165, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
+        }
+
+        .icon-container {
+            background: transparent;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%; /* Rund machen */
+            animation: pulseLogo 2s infinite; /* Animieren */
+        }
+
+        .text-container {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .code {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+        }
+
+        .hint {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="code-container">
+        <div class="icon-container">
+            <img src="/public/logo.png" alt="Logo" id="drop-logo">
+        </div>
+        <div class="text-container">
+            <span class="title">The Grid. Drop verfügbar!</span>
+            <span class="code" id="code-text">GRID-XXXX</span>
+            <span class="hint">Tippe /redeem im Community Discord ➡️ .gg/thegridcom</span>
+        </div>
+    </div>
+
+    <script>
+        const codeContainer = document.getElementById('code-container');
+        const codeText = document.getElementById('code-text');
+        
+        let currentActiveCode = null;
+
+        async function checkCode() {
+            try {
+                const response = await fetch('/api/creator-program/redeem/current');
+                const data = await response.json();
+
+                if (data.active && data.code) {
+                    if (currentActiveCode !== data.code) {
+                        currentActiveCode = data.code;
+                        codeText.textContent = data.code;
+                        
+                        // Zuerst display: flex setzen, kurz warten, dann Animation (show) starten
+                        codeContainer.style.display = 'flex';
+                        setTimeout(() => {
+                            codeContainer.classList.add('show');
+                        }, 50);
+                    }
+                } else {
+                    if (currentActiveCode !== null) {
+                        currentActiveCode = null;
+                        codeContainer.classList.remove('show');
+                        
+                        // Warten bis slide-out fertig ist, dann aus DOM nehmen (komplett blank)
+                        setTimeout(() => {
+                            if (currentActiveCode === null) {
+                                codeContainer.style.display = 'none';
+                            }
+                        }, 600);
+                    }
+                }
+            } catch (error) {
+                console.error("Fehler beim Abrufen des Codes:", error);
+            }
+        }
+
+        // Alle 3 Sekunden prüfen
+        setInterval(checkCode, 3000);
+        // Sofort beim Starten einmal prüfen
+        checkCode();
+    </script>
+</body>
+</html>
