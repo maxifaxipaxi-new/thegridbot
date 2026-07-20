@@ -413,7 +413,7 @@ export function startDashboard(client) {
         const guild = await client.guilds.fetch(GUILD_ID);
         const fetchedBans = await guild.bans.fetch();
         bans = fetchedBans.map(ban => ({
-          user: ban.user.tag,
+          user: ban.user, // Passing the full user object so bans.ejs can access ban.user.tag and ban.user.displayAvatarURL
           userId: ban.user.id,
           reason: ban.reason || 'Kein Grund angegeben'
         }));
