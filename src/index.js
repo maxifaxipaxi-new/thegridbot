@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
 import dotenv from 'dotenv';
 import { db } from './database/database.js';
 import { startBirthdayScheduler } from './scheduler.js';
@@ -28,22 +28,22 @@ const PREFIX = '?';
 
 client.once('clientReady', async () => {
   console.log(`Bot ist online! Eingeloggt als ${client.user.tag}`);
-  
+
   // Setze Status auf "Bitte nicht stören" (dnd) und Aktivität auf "Schaut zu .grid Community"
   client.user.setPresence({
-    activities: [{ 
-      name: '.grid Community', 
-      type: ActivityType.Watching 
+    activities: [{
+      name: '.grid Community',
+      type: ActivityType.Watching
     }],
     status: 'dnd',
   });
-  
+
   // Starte den Geburtstags-Scheduler
   startBirthdayScheduler(client);
   startAnnouncementsScheduler(client);
   startAutoDeleteScheduler(client);
   startBackupScheduler(client);
-  
+
   // Dashboard starten
   startDashboard(client);
 
@@ -89,7 +89,7 @@ client.on('messageCreate', async (message) => {
     if (!text) {
       try {
         const replyMsg = await message.reply('Bitte gib eine Nachricht an, die ich wiederholen soll! Beispiel: `?message Hallo Welt`');
-        setTimeout(() => replyMsg.delete().catch(() => {}), 5000);
+        setTimeout(() => replyMsg.delete().catch(() => { }), 5000);
       } catch (err) {
         console.error('Fehler beim Senden der Antwort auf ?message:', err);
       }
@@ -100,7 +100,7 @@ client.on('messageCreate', async (message) => {
     if (message.guild) {
       const canManage = message.channel.permissionsFor(client.user)?.has(PermissionFlagsBits.ManageMessages);
       if (canManage) {
-        await message.delete().catch(() => {});
+        await message.delete().catch(() => { });
       }
     }
 
@@ -115,7 +115,7 @@ client.on('messageCreate', async (message) => {
     if (!text) {
       try {
         const replyMsg = await message.reply('Bitte gib eine Nachricht an, die in einem Embed gesendet werden soll! Beispiel: `?embed Hallo Welt`');
-        setTimeout(() => replyMsg.delete().catch(() => {}), 5000);
+        setTimeout(() => replyMsg.delete().catch(() => { }), 5000);
       } catch (err) {
         console.error('Fehler beim Senden der Antwort auf ?embed:', err);
       }
@@ -126,7 +126,7 @@ client.on('messageCreate', async (message) => {
     if (message.guild) {
       const canManage = message.channel.permissionsFor(client.user)?.has(PermissionFlagsBits.ManageMessages);
       if (canManage) {
-        await message.delete().catch(() => {});
+        await message.delete().catch(() => { });
       }
     }
 
@@ -134,8 +134,8 @@ client.on('messageCreate', async (message) => {
       .setDescription(text)
       .setColor('#FFA500') // Orange für das Server-Design
       .setTimestamp()
-      .setFooter({ 
-        text: '🫵 | the grid.', 
+      .setFooter({
+        text: '🫵 | the grid.',
         iconURL: 'https://my.thegridcom.xyz/public/logo.png'
       });
 
@@ -159,6 +159,53 @@ client.on('interactionCreate', async (interaction) => {
     return handleTicketButton(interaction);
   }
 
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId === 'selfroles_select') {
+      try {
+        const roleId = interaction.values[0];
+        const member = interaction.member;
+
+        let added = false;
+        if (member.roles.cache.has(roleId)) {
+          await member.roles.remove(roleId);
+        } else {
+          await member.roles.add(roleId);
+          added = true;
+        }
+
+        const roleNames = {
+          '1464220894036496546': 'Gaming-News',
+          '1528765222062522408': 'Event-Ping',
+          '1528762995923226866': 'Stream-Ping',
+          '1528765311904649296': 'Neuigkeiten-Ping'
+        };
+
+        const roleName = roleNames[roleId] || 'Unbekannte Rolle';
+
+        await interaction.reply({
+          content: added ? `✅ Dir wurde die Rolle **${roleName}** hinzugefügt.` : `❌ Dir wurde die Rolle **${roleName}** entfernt.`,
+          flags: MessageFlags.Ephemeral
+        });
+
+        // Loggen in Channel 1387355992236363867
+        const logChannel = await client.channels.fetch('1387355992236363867').catch(() => null);
+        if (logChannel) {
+          const logEmbed = new EmbedBuilder()
+            .setTitle('Rollen-Update (Self-Role)')
+            .setColor(added ? '#22c55e' : '#ef4444')
+            .setDescription(`**User:** <@${member.id}> (${member.user.tag})\n**Rolle:** <@&${roleId}>\n**Aktion:** ${added ? 'Hinzugefügt' : 'Entfernt'}`)
+            .setTimestamp()
+            .setFooter({ text: `User ID: ${member.id}` });
+          await logChannel.send({ embeds: [logEmbed] });
+        }
+      } catch (error) {
+        console.error('Fehler bei Self-Roles:', error);
+        await interaction.reply({ content: 'Es gab einen Fehler bei der Rollenvergabe. Hast du oder hat der Bot die nötigen Rechte?', flags: MessageFlags.Ephemeral });
+      }
+      return;
+    }
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName } = interaction;
@@ -167,6 +214,80 @@ client.on('interactionCreate', async (interaction) => {
     // /ticketsetup
     if (commandName === 'ticketsetup') {
       return handleTicketSetup(interaction);
+    }
+
+    // /admincreate-selfroles
+    if (commandName === 'admincreate-selfroles') {
+      // Check admin permissions (Administrator)
+      if (!interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+        return interaction.reply({ content: 'Dazu hast du keine Rechte!', flags: MessageFlags.Ephemeral });
+      }
+
+      const embed = new EmbedBuilder()
+        .setDescription(
+          '# <:8309designerorange:1460236861661253643> Individuelle Rollenvergabe\n\n' +
+          'Du kannst selber auswählen was du bei uns sehen kannst und was nicht. Zudem kannst du auswählen ob du Benachrichtungen empfängst oder nicht...\n\n' +
+          '**🎮 Gaming-News**\nZugriff auf Channels mit Neuigkeiten, aktuellen Sales und Gratisgames.\n\n' +
+          '**🎉 Event-Ping**\nWenn es gemeinsame Events wie Gamerunden (mit und ohne Gewinne am Ende etc.) gibt.\n\n' +
+          '**🔴 Stream-Ping**\nWenn unsere Streamer live gehen.\n\n' +
+          '**📢 Neuigkeiten-Ping**\nDiscord Serveränderungen an bspw. dem Bot und Co.'
+        )
+        .setColor('#FFA500')
+        .setFooter({ text: 'Wähle eine Rolle aus dem Menü' });
+
+      const row = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('selfroles_select')
+          .setPlaceholder('Wähle eine Rolle aus...')
+          .addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Gaming-News')
+              .setDescription('News, Sales & Gratisgames')
+              .setValue('1464220894036496546')
+              .setEmoji('🎮'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Event-Ping')
+              .setDescription('Benachrichtigungen für Community Events')
+              .setValue('1528765222062522408')
+              .setEmoji('🎉'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Stream-Ping')
+              .setDescription('Benachrichtigungen für Live-Streams')
+              .setValue('1528762995923226866')
+              .setEmoji('🔴'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Neuigkeiten-Ping')
+              .setDescription('Bot Updates & Server-News')
+              .setValue('1528765311904649296')
+              .setEmoji('📢')
+          )
+      );
+
+      await interaction.channel.send({ embeds: [embed], components: [row] });
+      return interaction.reply({ content: 'Self-Roles Dropdown erfolgreich erstellt!', flags: MessageFlags.Ephemeral });
+    }
+
+    // /partner
+    if (commandName === 'partner') {
+      const embed = new EmbedBuilder()
+        .setTitle('🤝 the grid. Partner: Frogly Studios')
+        .setDescription(
+          'Wir sind unglaublich stolz darauf, offizieller Partner von **Frogly Studios** zu sein!\n\n' +
+          'Frogly Studios ist ein innovatives Game- und Softwarestudio, welches durch seinen erstklassigen Support ' +
+          'die Entwicklung und den Betrieb dieses Bots (the grid.) maßgeblich ermöglicht.\n\n' +
+          '**Erster Release auf Steam!** 🎉\n' +
+          'Schau dir unbedingt ihre erste eigene Software auf Steam an und unterstütze sie:\n' +
+          '🔗 **[frogly.fun](https://frogly.fun)**\n\n' +
+          '*Vielen Dank an Frogly Studios für die großartige Zusammenarbeit!*'
+        )
+        .setColor('#FFA500')
+        .setImage('https://my.thegridcom.xyz/public/logo.png') // or maybe leave out or use standard thumbnail
+        .setThumbnail('https://my.thegridcom.xyz/public/logo.png')
+        .setTimestamp()
+        .setFooter({ text: 'the grid. x Frogly Studios' });
+
+      await interaction.reply({ embeds: [embed] });
+      return;
     }
 
     // /support
@@ -181,8 +302,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .setColor('#FFA500') // Orange für das Server-Design
         .setTimestamp()
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -195,21 +316,21 @@ client.on('interactionCreate', async (interaction) => {
         .setTitle('📚 Bot Befehlsübersicht')
         .setDescription('Hier findest du alle verfügbaren Befehle dieses Bots:')
         .addFields(
-          { 
-            name: '🚀 Slash-Befehle (mit / ausführen)', 
+          {
+            name: '🚀 Slash-Befehle (mit / ausführen)',
             value: '`/help` - Zeigt diese Hilfe-Übersicht.\n' +
-                  '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
-                  '`/geburtstag <tag> <monat>` - Trage deinen Geburtstag ein.\n' +
-                  '`/datenschutz` - Zeigt die Datenschutzerklärung (nur für dich sichtbar).\n' +
-                  '`/datenloeschung` - Löscht alle deine personenbezogenen Daten aus der Datenbank (nur für dich sichtbar).\n' +
-                  '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
-                  '`/streamer` - Infos für Content Creator & Streamer.'
+              '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
+              '`/geburtstag <tag> <monat>` - Trage deinen Geburtstag ein.\n' +
+              '`/datenschutz` - Zeigt die Datenschutzerklärung (nur für dich sichtbar).\n' +
+              '`/datenloeschung` - Löscht alle deine personenbezogenen Daten aus der Datenbank (nur für dich sichtbar).\n' +
+              '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
+              '`/streamer` - Infos für Content Creator & Streamer.'
           }
         )
         .setColor('#FFA500') // Orange für das Server-Design
         .setTimestamp()
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -224,9 +345,9 @@ client.on('interactionCreate', async (interaction) => {
       // Plausibilitätsprüfung für Tage pro Monat
       const maxDays = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
       if (tag > maxDays[monat]) {
-        return interaction.reply({ 
-          content: `❌ Ungültiges Datum! Der Monat **${monat}** hat keine **${tag}** Tage.`, 
-          flags: MessageFlags.Ephemeral 
+        return interaction.reply({
+          content: `❌ Ungültiges Datum! Der Monat **${monat}** hat keine **${tag}** Tage.`,
+          flags: MessageFlags.Ephemeral
         });
       }
 
@@ -265,8 +386,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .setColor('#FFA500') // Orange für das Server-Design
         .setTimestamp()
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -276,18 +397,18 @@ client.on('interactionCreate', async (interaction) => {
     // /datenloeschung
     else if (commandName === 'datenloeschung') {
       const deleted = await db.deleteUserBirthday(interaction.user.id);
-      
+
       const embed = new EmbedBuilder()
         .setTitle('🗑️ Datenlöschung (DSGVO)')
         .setDescription(
-          deleted 
+          deleted
             ? '✅ **Erfolgreich gelöscht!**\n\nAlle deine gespeicherten personenbezogenen Daten (User-ID und dein Geburtstag) wurden vollständig aus unserem System gelöscht. Du bist nicht mehr in der Datenbank hinterlegt.'
             : 'ℹ️ **Keine Daten gefunden!**\n\nEs wurden keine gespeicherten personenbezogenen Daten zu deiner User-ID in unserem System gefunden.'
         )
         .setColor('#FFA500') // Orange für das Server-Design
         .setTimestamp()
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -305,8 +426,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .setColor('#FFA500') // Orange
         .setTimestamp()
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -323,8 +444,8 @@ client.on('interactionCreate', async (interaction) => {
         )
         .setColor('#FFA500') // Orange
         .setTimestamp()
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -337,14 +458,14 @@ client.on('interactionCreate', async (interaction) => {
       const hasRole = member.roles.cache.has('1294670974020616294');
 
       if (hasRole) {
-        await interaction.reply({ 
-          content: 'Hier geht es zum Dashboard: https://my.thegridcom.xyz/dashboard/', 
-          flags: MessageFlags.Ephemeral 
+        await interaction.reply({
+          content: 'Hier geht es zum Dashboard: https://my.thegridcom.xyz/dashboard/',
+          flags: MessageFlags.Ephemeral
         });
       } else {
-        await interaction.reply({ 
-          content: 'nanana nur für echte frösche erlaubt.', 
-          flags: MessageFlags.Ephemeral 
+        await interaction.reply({
+          content: 'nanana nur für echte frösche erlaubt.',
+          flags: MessageFlags.Ephemeral
         });
       }
     }
@@ -352,7 +473,7 @@ client.on('interactionCreate', async (interaction) => {
     // /redeem
     else if (commandName === 'redeem') {
       const codeInput = interaction.options.getString('code').toUpperCase();
-      
+
       const codeData = await db.getRedeemCode(codeInput);
       if (!codeData) {
         return interaction.reply({ content: '❌ Dieser Code existiert nicht oder ist ungültig.', flags: MessageFlags.Ephemeral });
@@ -379,7 +500,7 @@ client.on('interactionCreate', async (interaction) => {
     // /level
     else if (commandName === 'level') {
       const user = await db.getUser(interaction.user.id);
-      
+
       // Bonus sofort überprüfen und updaten
       const hasTag = await checkGridBoost(client, interaction.user.id);
       user.hasBonus = hasTag ? 1 : 0;
@@ -387,21 +508,21 @@ client.on('interactionCreate', async (interaction) => {
       const level = user.level || 0;
       const xp = user.xp || 0;
       const nextXp = getRequiredXP(level);
-      
+
       let prevXp = 0;
       if (level > 0) prevXp = LEVEL_THRESHOLDS[level];
-      
+
       let progressBar = '';
       if (nextXp === 'MAX') {
-         progressBar = '🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧';
+        progressBar = '🟧🟧🟧🟧🟧🟧🟧🟧🟧🟧';
       } else {
-         const xpInLevel = xp - prevXp;
-         const xpNeeded = nextXp - prevXp;
-         const progressPercent = Math.min(Math.max(xpInLevel / xpNeeded, 0), 1);
-         const filledBars = Math.round(progressPercent * 10);
-         progressBar = '🟧'.repeat(filledBars) + '⬛'.repeat(10 - filledBars);
+        const xpInLevel = xp - prevXp;
+        const xpNeeded = nextXp - prevXp;
+        const progressPercent = Math.min(Math.max(xpInLevel / xpNeeded, 0), 1);
+        const filledBars = Math.round(progressPercent * 10);
+        progressBar = '🟧'.repeat(filledBars) + '⬛'.repeat(10 - filledBars);
       }
-      
+
       const allUsers = await db.getAllUsers();
       const sortedUsers = Object.entries(allUsers).sort((a, b) => b[1].xp - a[1].xp);
       const rankIndex = sortedUsers.findIndex(u => u[0] === interaction.user.id);
@@ -410,21 +531,21 @@ client.on('interactionCreate', async (interaction) => {
       const currentRole = level > 0 && LEVEL_ROLES[level] ? `<@&${LEVEL_ROLES[level]}>` : 'Kein Level';
       let nextLevelText = 'Maximales Level erreicht! 🏆';
       if (nextXp !== 'MAX') {
-         const nextRole = LEVEL_ROLES[level + 1] ? `<@&${LEVEL_ROLES[level + 1]}>` : `Level ${level + 1}`;
-         nextLevelText = `${nextRole} (noch ${nextXp - xp} XP)`;
+        const nextRole = LEVEL_ROLES[level + 1] ? `<@&${LEVEL_ROLES[level + 1]}>` : `Level ${level + 1}`;
+        nextLevelText = `${nextRole} (noch ${nextXp - xp} XP)`;
       }
 
-      let bonusText = hasTag 
-          ? '\n\n🎉 **Bonus aktiv!** Danke, dass du unseren Servertag verwendest. Du sammelst 50% mehr XP mit jeder Nachricht und 2x so viele in Voicechannels.' 
-          : '\n\n❌ **50% Bonus:** nicht aktiv (adoptiere unseren Servertag um mehr XP zu sammeln)';
+      let bonusText = hasTag
+        ? '\n\n🎉 **Bonus aktiv!** Danke, dass du unseren Servertag verwendest. Du sammelst 50% mehr XP mit jeder Nachricht und 2x so viele in Voicechannels.'
+        : '\n\n❌ **50% Bonus:** nicht aktiv (adoptiere unseren Servertag um mehr XP zu sammeln)';
 
       const embed = new EmbedBuilder()
         .setTitle(`XP Profil von ${interaction.user.username}`)
         .setDescription(`**Aktuelles Level:** ${currentRole}\n**Nächstes Level:** ${nextLevelText}\n\n**Erfahrungspunkte:** ${xp} XP\n**Server Rank:** #${rank}\n\n**Fortschritt zum nächsten Level:**\n${progressBar}${bonusText}\n\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)`)
         .setColor('#FFA500')
         .setThumbnail(interaction.user.displayAvatarURL())
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 
@@ -446,15 +567,15 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       if (description === '') description = 'Noch keine XP verteilt!\n';
-      
+
       description += '\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)';
 
       const embed = new EmbedBuilder()
         .setTitle('🏆 XP Leaderboard (Top 10)')
         .setDescription(description)
         .setColor('#FFA500')
-        .setFooter({ 
-          text: '🫵 | the grid.', 
+        .setFooter({
+          text: '🫵 | the grid.',
           iconURL: 'https://my.thegridcom.xyz/public/logo.png'
         });
 

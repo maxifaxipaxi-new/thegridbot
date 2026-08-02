@@ -1,2 +1,4 @@
 # thegridbot
-https://imgur.com/a/4kPKJZb.gif
+.env:
+DISCORD_TOKEN=
+CLIENT_ID=

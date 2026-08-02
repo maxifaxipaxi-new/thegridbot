@@ -99,6 +99,14 @@ const commands = [
         .setDescription('Der Code aus dem Stream')
         .setRequired(true)
     ),
+
+  new SlashCommandBuilder()
+    .setName('admincreate-selfroles')
+    .setDescription('Erstellt das Self-Role Dropdown-Menü im aktuellen Kanal (Nur Admins).'),
+
+  new SlashCommandBuilder()
+    .setName('partner')
+    .setDescription('Erfahre mehr über unseren stolzen Partner: Frogly Studios!'),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {
