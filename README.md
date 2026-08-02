@@ -1,4 +1,1 @@
-# thegridbot
-.env:
-DISCORD_TOKEN=
-CLIENT_ID=
+# The Grid. Community Bot
