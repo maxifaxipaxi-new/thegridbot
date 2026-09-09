@@ -861,7 +861,7 @@ export function startDashboard(client) {
         return res.redirect('/dashboard/giveaways?error=Giveaway nicht gefunden oder bereits beendet.');
       }
 
-      const { endGiveaway } = await import('../../giveaways.js');
+      const { endGiveaway } = await import('../giveaways.js');
       await endGiveaway(client, giveaway);
 
       res.redirect('/dashboard/giveaways?success=Giveaway wurde erfolgreich vorzeitig beendet und ausgelost!');
