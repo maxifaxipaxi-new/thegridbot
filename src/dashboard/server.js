@@ -421,7 +421,16 @@ export function startDashboard(client) {
         console.error('Fehler beim Abrufen der Bans:', err);
       }
     }
-    res.render('bans', { user: req.session.user, bans });
+    
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const totalPages = Math.ceil(bans.length / limit) || 1;
+    const paginatedBans = bans.slice(startIndex, endIndex);
+
+    res.render('bans', { user: req.session.user, bans: paginatedBans, currentPage: page, totalPages, errorMsg: req.query.error, successMsg: req.query.success });
   });
 
    // ==========================================
@@ -589,32 +598,48 @@ export function startDashboard(client) {
 
   // XP Management Routes (Mods/Team)
   app.get('/dashboard/xp', checkAuth, async (req, res) => {
-    let usersList = [];
+    let rawUsersList = [];
     try {
       const allUsers = await db.getAllUsers();
       
       for (const [userId, userData] of Object.entries(allUsers)) {
-        let username = 'Unbekannt';
-        if (client.isReady()) {
-          try {
-            const u = await client.users.fetch(userId);
-            if (u) username = u.username;
-          } catch(e) {}
-        }
-        usersList.push({ 
+        rawUsersList.push({ 
           id: userId, 
-          username, 
           xp: userData.xp, 
           level: userData.level || 0, 
           hasBonus: userData.hasBonus === 1 
         });
       }
       
-      usersList.sort((a, b) => b.xp - a.xp);
+      rawUsersList.sort((a, b) => b.xp - a.xp);
+      
+      // Pagination First
+      const page = parseInt(req.query.page) || 1;
+      const limit = 10;
+      const startIndex = (page - 1) * limit;
+      const endIndex = page * limit;
+      const totalPages = Math.ceil(rawUsersList.length / limit) || 1;
+      
+      const paginatedRawUsers = rawUsersList.slice(startIndex, endIndex);
+      
+      // Fetch Usernames only for the paginated slice
+      const usersList = [];
+      for (const userData of paginatedRawUsers) {
+        let username = 'Unbekannt';
+        if (client.isReady()) {
+          try {
+            const u = await client.users.fetch(userData.id);
+            if (u) username = u.username;
+          } catch(e) {}
+        }
+        usersList.push({ ...userData, username });
+      }
+
+      res.render('xp_editor', { user: req.session.user, usersList, currentPage: page, totalPages, errorMsg: req.query.error, successMsg: req.query.success });
     } catch(err) {
       console.error('Fehler beim Laden der XP Liste:', err);
+      res.redirect('/dashboard?error=Fehler beim Laden der XP Liste');
     }
-    res.render('xp_editor', { user: req.session.user, usersList, errorMsg: req.query.error, successMsg: req.query.success });
   });
 
   app.post('/dashboard/xp/edit', checkAuth, async (req, res) => {

@@ -7,7 +7,7 @@ import { startAnnouncementsScheduler } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
 import { startAutoDeleteScheduler } from './auto-delete.js';
 import { handleTicketSetup, handleTicketButton } from './tickets.js';
-import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost } from './leveling.js';
+import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost, checkLevelUp } from './leveling.js';
 import { startBackupScheduler } from './backup.js';
 import { startRadio } from './radio.js';
 import { handleWaitingRoomJoin, handleWaitingRoomButton } from './waiting-room.js';
@@ -494,6 +494,48 @@ client.on('interactionCreate', async (interaction) => {
       } catch (err) {
         console.error('Fehler beim Einlösen des Codes:', err);
         await interaction.reply({ content: '❌ Es gab einen Fehler beim Einlösen des Codes.', flags: MessageFlags.Ephemeral });
+      }
+    }
+
+    // /weekly
+    else if (commandName === 'weekly') {
+      const user = await db.getUser(interaction.user.id);
+      const now = Date.now();
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      
+      if (now - (user.lastWeeklyTimestamp || 0) >= sevenDays) {
+        user.xp += 100;
+        user.lastWeeklyTimestamp = now;
+        
+        await checkLevelUp(client, interaction.guild, interaction.member, user);
+        await db.updateUser(interaction.user.id, user);
+
+        const embed = new EmbedBuilder()
+          .setTitle('🎁 Wöchentlicher Bonus')
+          .setDescription(`Du hast deinen wöchentlichen Bonus abgeholt!\n\n**+ 100 XP** wurden dir gutgeschrieben.\nDu hast nun **${user.xp} XP**.`)
+          .setColor('#10b981')
+          .setThumbnail(interaction.user.displayAvatarURL())
+          .setFooter({
+            text: '🫵 | the grid.',
+            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          });
+
+        await interaction.reply({ embeds: [embed] });
+      } else {
+        const timeLeft = sevenDays - (now - user.lastWeeklyTimestamp);
+        const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        
+        const embed = new EmbedBuilder()
+          .setTitle('⏳ Nicht so schnell!')
+          .setDescription(`Du hast deinen wöchentlichen Bonus bereits abgeholt.\n\nBitte warte noch **${days} Tage und ${hours} Stunden**, bevor du diesen Befehl erneut nutzen kannst.`)
+          .setColor('#ef4444')
+          .setFooter({
+            text: '🫵 | the grid.',
+            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          });
+
+        await interaction.reply({ embeds: [embed] });
       }
     }
 

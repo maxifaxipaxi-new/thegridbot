@@ -13,6 +13,10 @@ const commands = [
     .setDescription('Zeigt eine Liste aller verfügbaren Befehle.'),
 
   new SlashCommandBuilder()
+    .setName('weekly')
+    .setDescription('Hol dir deinen wöchentlichen 100 XP Bonus ab! (Alle 7 Tage möglich)'),
+
+  new SlashCommandBuilder()
     .setName('geburtstag')
     .setDescription('Trage deinen Geburtstag ein, um an dem Tag beglückwünscht zu werden.')
     .addIntegerOption(option =>

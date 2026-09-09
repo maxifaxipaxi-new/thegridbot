@@ -26,7 +26,8 @@ class Database {
         lastMessageTimestamp INTEGER DEFAULT 0,
         dailyVoicePoints INTEGER DEFAULT 0,
         dailyVoiceReset INTEGER DEFAULT 0,
-        hasBonus INTEGER DEFAULT 0
+        hasBonus INTEGER DEFAULT 0,
+        lastWeeklyTimestamp INTEGER DEFAULT 0
       );
       
       CREATE TABLE IF NOT EXISTS birthdays (
@@ -92,6 +93,12 @@ class Database {
       await db.exec('ALTER TABLE users ADD COLUMN hasBonus INTEGER DEFAULT 0');
     } catch (err) {
       // Column might already exist, ignore error
+    }
+
+    try {
+      await db.exec('ALTER TABLE users ADD COLUMN lastWeeklyTimestamp INTEGER DEFAULT 0');
+    } catch (err) {
+      // Column might already exist
     }
 
     try {
@@ -291,10 +298,10 @@ class Database {
   // --- Leveling & XP ---
   async getUser(userId) {
     const db = await this.dbPromise;
-    let user = await db.get('SELECT xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus FROM users WHERE id = ?', [userId]);
+    let user = await db.get('SELECT xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus, lastWeeklyTimestamp FROM users WHERE id = ?', [userId]);
     if (!user) {
-      user = { xp: 0, level: 0, lastMessageTimestamp: 0, dailyVoicePoints: 0, dailyVoiceReset: 0, hasBonus: 0 };
-      await db.run('INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus) VALUES (?, ?, ?, ?, ?, ?, ?)', [userId, 0, 0, 0, 0, 0, 0]);
+      user = { xp: 0, level: 0, lastMessageTimestamp: 0, dailyVoicePoints: 0, dailyVoiceReset: 0, hasBonus: 0, lastWeeklyTimestamp: 0 };
+      await db.run('INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus, lastWeeklyTimestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [userId, 0, 0, 0, 0, 0, 0, 0]);
     }
     return user;
   }
@@ -302,16 +309,17 @@ class Database {
   async updateUser(userId, userData) {
     const db = await this.dbPromise;
     await db.run(`
-      INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (id, xp, level, lastMessageTimestamp, dailyVoicePoints, dailyVoiceReset, hasBonus, lastWeeklyTimestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         xp = excluded.xp,
         level = excluded.level,
         lastMessageTimestamp = excluded.lastMessageTimestamp,
         dailyVoicePoints = excluded.dailyVoicePoints,
         dailyVoiceReset = excluded.dailyVoiceReset,
-        hasBonus = excluded.hasBonus
-    `, [userId, userData.xp, userData.level, userData.lastMessageTimestamp, userData.dailyVoicePoints, userData.dailyVoiceReset, userData.hasBonus || 0]);
+        hasBonus = excluded.hasBonus,
+        lastWeeklyTimestamp = excluded.lastWeeklyTimestamp
+    `, [userId, userData.xp, userData.level, userData.lastMessageTimestamp, userData.dailyVoicePoints, userData.dailyVoiceReset, userData.hasBonus || 0, userData.lastWeeklyTimestamp || 0]);
   }
 
   async getAllUsers() {
@@ -325,7 +333,8 @@ class Database {
         lastMessageTimestamp: r.lastMessageTimestamp,
         dailyVoicePoints: r.dailyVoicePoints,
         dailyVoiceReset: r.dailyVoiceReset,
-        hasBonus: r.hasBonus
+        hasBonus: r.hasBonus,
+        lastWeeklyTimestamp: r.lastWeeklyTimestamp
       };
     }
     return result;
