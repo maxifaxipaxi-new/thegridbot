@@ -80,6 +80,36 @@ class Database {
         ownerId TEXT
       );
       
+      CREATE TABLE IF NOT EXISTS support_tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channelId TEXT UNIQUE,
+        userId TEXT,
+        status TEXT,
+        claimedBy TEXT,
+        createdAt INTEGER,
+        closedAt INTEGER
+      );
+      
+      CREATE TABLE IF NOT EXISTS giveaways (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channelId TEXT,
+        messageId TEXT,
+        title TEXT,
+        description TEXT,
+        banner TEXT,
+        hostedBy TEXT,
+        endsAt INTEGER,
+        winnerCount INTEGER DEFAULT 1,
+        minXp INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'active'
+      );
+      
+      CREATE TABLE IF NOT EXISTS giveaway_entries (
+        giveawayId INTEGER,
+        userId TEXT,
+        PRIMARY KEY (giveawayId, userId)
+      );
+      
       CREATE TABLE IF NOT EXISTS tickets (
         channelId TEXT PRIMARY KEY,
         userId TEXT,
@@ -239,7 +269,7 @@ class Database {
   // --- Dynamic Voice Channels ---
   async addDynamicChannel(channelId, ownerId) {
     const db = await this.dbPromise;
-    await db.run('INSERT INTO dynamic_channels (channelId, ownerId) VALUES (?, ?) ON CONFLICT(channelId) DO UPDATE SET ownerId = excluded.ownerId', [channelId, ownerId]);
+    await db.run('INSERT OR REPLACE INTO dynamic_channels (channelId, ownerId) VALUES (?, ?)', [channelId, ownerId]);
   }
 
   async removeDynamicChannel(channelId) {
@@ -249,14 +279,77 @@ class Database {
 
   async getDynamicChannelOwner(channelId) {
     const db = await this.dbPromise;
-    const row = await db.get('SELECT ownerId FROM dynamic_channels WHERE channelId = ?', [channelId]);
-    return row?.ownerId || null;
+    const result = await db.get('SELECT ownerId FROM dynamic_channels WHERE channelId = ?', [channelId]);
+    return result ? result.ownerId : null;
   }
 
   async isDynamicChannel(channelId) {
     const db = await this.dbPromise;
-    const row = await db.get('SELECT 1 FROM dynamic_channels WHERE channelId = ?', [channelId]);
-    return !!row;
+    const result = await db.get('SELECT 1 FROM dynamic_channels WHERE channelId = ?', [channelId]);
+    return !!result;
+  }
+
+  // --- Giveaways ---
+  async createGiveaway(data) {
+    const db = await this.dbPromise;
+    const result = await db.run(`
+      INSERT INTO giveaways (channelId, messageId, title, description, banner, hostedBy, endsAt, winnerCount, minXp, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      data.channelId,
+      data.messageId,
+      data.title,
+      data.description,
+      data.banner || '',
+      data.hostedBy || '',
+      data.endsAt,
+      data.winnerCount || 1,
+      data.minXp || 0,
+      'active'
+    ]);
+    return result.lastID;
+  }
+
+  async getActiveGiveaways() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM giveaways WHERE status = "active"');
+  }
+
+  async getAllGiveaways() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM giveaways ORDER BY endsAt DESC');
+  }
+
+  async getGiveaway(id) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM giveaways WHERE id = ?', [id]);
+  }
+
+  async updateGiveawayMessageId(id, messageId) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE giveaways SET messageId = ? WHERE id = ?', [messageId, id]);
+  }
+
+  async endGiveaway(id) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE giveaways SET status = "ended" WHERE id = ?', [id]);
+  }
+
+  async addGiveawayEntry(giveawayId, userId) {
+    const db = await this.dbPromise;
+    await db.run('INSERT OR IGNORE INTO giveaway_entries (giveawayId, userId) VALUES (?, ?)', [giveawayId, userId]);
+  }
+
+  async getGiveawayEntries(giveawayId) {
+    const db = await this.dbPromise;
+    const entries = await db.all('SELECT userId FROM giveaway_entries WHERE giveawayId = ?', [giveawayId]);
+    return entries.map(e => e.userId);
+  }
+
+  async hasUserEnteredGiveaway(giveawayId, userId) {
+    const db = await this.dbPromise;
+    const result = await db.get('SELECT 1 FROM giveaway_entries WHERE giveawayId = ? AND userId = ?', [giveawayId, userId]);
+    return !!result;
   }
 
   // --- Tickets ---
@@ -399,6 +492,74 @@ class Database {
       await db.run('ROLLBACK');
       throw err;
     }
+  }
+  // --- Giveaways ---
+  async createGiveaway(data) {
+    const db = await this.dbPromise;
+    const result = await db.run(`
+      INSERT INTO giveaways (channelId, messageId, title, description, banner, hostedBy, endsAt, winnerCount, minXp, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      data.channelId,
+      data.messageId,
+      data.title,
+      data.description,
+      data.banner || '',
+      data.hostedBy || '',
+      data.endsAt,
+      data.winnerCount || 1,
+      data.minXp || 0,
+      'active'
+    ]);
+    return result.lastID;
+  }
+
+  async getActiveGiveaways() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM giveaways WHERE status = "active"');
+  }
+
+  async getAllGiveaways() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM giveaways ORDER BY endsAt DESC');
+  }
+
+  async getGiveaway(id) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM giveaways WHERE id = ?', [id]);
+  }
+
+  async updateGiveawayMessageId(id, messageId) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE giveaways SET messageId = ? WHERE id = ?', [messageId, id]);
+  }
+
+  async endGiveaway(id) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE giveaways SET status = "ended" WHERE id = ?', [id]);
+  }
+
+  async addGiveawayEntry(giveawayId, userId) {
+    const db = await this.dbPromise;
+    await db.run('INSERT OR IGNORE INTO giveaway_entries (giveawayId, userId) VALUES (?, ?)', [giveawayId, userId]);
+  }
+
+  async getGiveawayEntries(giveawayId) {
+    const db = await this.dbPromise;
+    const entries = await db.all('SELECT userId FROM giveaway_entries WHERE giveawayId = ?', [giveawayId]);
+    return entries.map(e => e.userId);
+  }
+
+  async hasUserEnteredGiveaway(giveawayId, userId) {
+    const db = await this.dbPromise;
+    const result = await db.get('SELECT 1 FROM giveaway_entries WHERE giveawayId = ? AND userId = ?', [giveawayId, userId]);
+    return !!result;
+  }
+
+  async deleteGiveaway(id) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM giveaways WHERE id = ?', [id]);
+    await db.run('DELETE FROM giveaway_entries WHERE giveawayId = ?', [id]);
   }
 }
 

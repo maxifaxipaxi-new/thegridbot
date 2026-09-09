@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import dotenv from 'dotenv';
 import { db } from './database/database.js';
 import { startBirthdayScheduler } from './scheduler.js';
@@ -11,6 +11,7 @@ import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_
 import { startBackupScheduler } from './backup.js';
 import { startRadio } from './radio.js';
 import { handleWaitingRoomJoin, handleWaitingRoomButton } from './waiting-room.js';
+import { startGiveawayScheduler } from './giveaways.js';
 
 dotenv.config();
 
@@ -43,6 +44,8 @@ client.once('clientReady', async () => {
   startAnnouncementsScheduler(client);
   startAutoDeleteScheduler(client);
   startBackupScheduler(client);
+  startGiveawayScheduler(client);
+  console.log('Giveaway Scheduler gestartet (läuft minütlich).');
 
   // Dashboard starten
   startDashboard(client);
@@ -156,6 +159,93 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId.startsWith('move_waiter_')) {
       return handleWaitingRoomButton(interaction);
     }
+    if (interaction.customId.startsWith('vc_')) {
+      const channel = interaction.member.voice.channel;
+      if (!channel) {
+        return interaction.reply({ content: '❌ Du musst dich in deinem Voice-Channel befinden!', flags: MessageFlags.Ephemeral });
+      }
+
+      const isDynamic = await db.isDynamicChannel(channel.id);
+      if (!isDynamic) {
+        return interaction.reply({ content: '❌ Dieser Button funktioniert nur in dynamischen Voice-Channels.', flags: MessageFlags.Ephemeral });
+      }
+
+      const ownerId = await db.getDynamicChannelOwner(channel.id);
+      if (ownerId !== interaction.user.id) {
+        return interaction.reply({ content: '❌ Nur der Ersteller dieses Voice-Channels kann ihn verwalten!', flags: MessageFlags.Ephemeral });
+      }
+
+      if (interaction.customId === 'vc_rename') {
+        const modal = new ModalBuilder()
+          .setCustomId('vc_rename_modal')
+          .setTitle('Channel umbenennen');
+        
+        const nameInput = new TextInputBuilder()
+          .setCustomId('vc_name_input')
+          .setLabel('Neuer Name')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(50);
+          
+        modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+        return interaction.showModal(modal);
+      } 
+      else if (interaction.customId === 'vc_limit') {
+        const modal = new ModalBuilder()
+          .setCustomId('vc_limit_modal')
+          .setTitle('Nutzerlimit setzen');
+        
+        const limitInput = new TextInputBuilder()
+          .setCustomId('vc_limit_input')
+          .setLabel('Limit (0 für unbegrenzt)')
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(2);
+          
+        modal.addComponents(new ActionRowBuilder().addComponents(limitInput));
+        return interaction.showModal(modal);
+      }
+      else if (interaction.customId === 'vc_lock') {
+        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
+        await channel.permissionOverwrites.edit(interaction.user.id, { Connect: true });
+        return interaction.reply({ content: '🔒 Voice-Channel wurde für neue Nutzer gesperrt.', flags: MessageFlags.Ephemeral });
+      }
+      else if (interaction.customId === 'vc_unlock') {
+        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: null });
+        return interaction.reply({ content: '🔓 Voice-Channel ist wieder für alle geöffnet.', flags: MessageFlags.Ephemeral });
+      }
+    }
+    if (interaction.customId.startsWith('giveaway_join_')) {
+      const giveawayId = parseInt(interaction.customId.replace('giveaway_join_', ''));
+      const giveaway = await db.getGiveaway(giveawayId);
+      
+      if (!giveaway) {
+        return interaction.reply({ content: '❌ Dieses Giveaway existiert nicht mehr.', flags: MessageFlags.Ephemeral });
+      }
+      if (giveaway.status !== 'active') {
+        return interaction.reply({ content: '❌ Dieses Giveaway ist bereits beendet!', flags: MessageFlags.Ephemeral });
+      }
+
+      // Check minXp
+      if (giveaway.minXp > 0) {
+        const user = await db.getUser(interaction.user.id);
+        if (user.xp < giveaway.minXp) {
+          return interaction.reply({ 
+            content: `❌ Du bist noch nicht berechtigt, an diesem Giveaway teilzunehmen!\nDir fehlen noch **${giveaway.minXp - user.xp} XP** (benötigt: ${giveaway.minXp} XP).\nSammle mehr Aktivität im Chat oder Voice-Channel!`, 
+            flags: MessageFlags.Ephemeral 
+          });
+        }
+      }
+
+      const hasEntered = await db.hasUserEnteredGiveaway(giveawayId, interaction.user.id);
+      if (hasEntered) {
+        return interaction.reply({ content: 'Du nimmst bereits an diesem Giveaway teil!', flags: MessageFlags.Ephemeral });
+      }
+
+      await db.addGiveawayEntry(giveawayId, interaction.user.id);
+      return interaction.reply({ content: '🎉 Du nimmst erfolgreich am Giveaway teil! Viel Glück!', flags: MessageFlags.Ephemeral });
+    }
+
     return handleTicketButton(interaction);
   }
 
@@ -203,6 +293,30 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply({ content: 'Es gab einen Fehler bei der Rollenvergabe. Hast du oder hat der Bot die nötigen Rechte?', flags: MessageFlags.Ephemeral });
       }
       return;
+    }
+  }
+
+  if (interaction.isModalSubmit()) {
+    if (interaction.customId === 'vc_rename_modal') {
+      const name = interaction.fields.getTextInputValue('vc_name_input');
+      const channel = interaction.member.voice.channel;
+      if (channel) {
+        const prefixedName = `📞│ ${name}`;
+        await channel.setName(prefixedName).catch(() => {});
+        return interaction.reply({ content: `✅ Voice-Channel wurde in **${prefixedName}** umbenannt.`, flags: MessageFlags.Ephemeral });
+      }
+    }
+    else if (interaction.customId === 'vc_limit_modal') {
+      const limitStr = interaction.fields.getTextInputValue('vc_limit_input');
+      let limit = parseInt(limitStr, 10);
+      if (isNaN(limit) || limit < 0) limit = 0;
+      if (limit > 99) limit = 99;
+      
+      const channel = interaction.member.voice.channel;
+      if (channel) {
+        await channel.setUserLimit(limit).catch(() => {});
+        return interaction.reply({ content: `✅ Nutzerlimit wurde auf **${limit === 0 ? 'Unbegrenzt' : limit}** gesetzt.`, flags: MessageFlags.Ephemeral });
+      }
     }
   }
 
@@ -321,8 +435,6 @@ client.on('interactionCreate', async (interaction) => {
             value: '`/help` - Zeigt diese Hilfe-Übersicht.\n' +
               '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
               '`/geburtstag <tag> <monat>` - Trage deinen Geburtstag ein.\n' +
-              '`/datenschutz` - Zeigt die Datenschutzerklärung (nur für dich sichtbar).\n' +
-              '`/datenloeschung` - Löscht alle deine personenbezogenen Daten aus der Datenbank (nur für dich sichtbar).\n' +
               '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
               '`/streamer` - Infos für Content Creator & Streamer.'
           }
@@ -359,61 +471,6 @@ client.on('interactionCreate', async (interaction) => {
       });
     }
 
-    // /datenschutz
-    else if (commandName === 'datenschutz') {
-      const embed = new EmbedBuilder()
-        .setTitle('🛡️ Datenschutzerklärung (DSGVO)')
-        .setDescription(
-          'Diese Erklärung informiert dich darüber, welche personenbezogenen Daten dieser Bot erfasst, speichert und wie diese verarbeitet werden.\n\n' +
-          '### 1. Verantwortliche Stelle\n' +
-          'Verantwortlich für die Datenverarbeitung des Bots ist die Serverleitung dieses Discord-Servers (**".grid Community"**).\n\n' +
-          '### 2. Erhobene Daten und Verwendungszweck\n' +
-          'Der Bot verarbeitet und speichert folgende Daten:\n' +
-          '• **Discord-User-ID:** Zur eindeutigen Zuordnung von Geburtstagen und XP-Werten zu deinem Discord-Konto.\n' +
-          '• **Geburtstag (Tag & Monat):** Um automatische Glückwünsche am Geburtstag im konfigurierten Kanal zu senden.\n' +
-          '• **Erfahrungspunkte (XP) & Level:** Deine gesammelten XP, dein aktuelles Level sowie Zeitstempel deiner letzten Text- oder Voice-Aktivität zur Berechnung deines Ranks auf dem Leaderboard.\n' +
-          '• **Server-Einstellungen:** Der Bot speichert zudem Gilden-IDs, Kanal-IDs sowie öffentliche Twitch-/YouTube-Namen für das Dashboard und die automatischen Ankündigungen (keine personenbezogenen Daten normaler Nutzer).\n\n' +
-          '*Rechtsgrundlage:* Die Verarbeitung erfolgt auf Grundlage deiner ausdrücklichen Einwilligung (**Art. 6 Abs. 1 lit. a DSGVO**) durch die freiwillige Eingabe deines Geburtstags über den Befehl `/geburtstag` sowie durch deine aktive Nutzung des Chats und Voice-Chats.\n\n' +
-          '### 3. Datenspeicherung & Sicherheit\n' +
-          '• Alle Daten werden lokal in einer sicheren SQLite-Datenbank (`db.sqlite`) auf dem Server des Bot-Betreibers in Deutschland gespeichert.\n' +
-          '• Es erfolgt **keine Weitergabe** der Daten an Dritte.\n' +
-          '• Es werden **keine** Inhalte von Chatnachrichten dauerhaft protokolliert, sondern lediglich ein Zeitstempel der letzten Nachricht für den XP-Cooldown.\n\n' +
-          '### 4. Deine Rechte (Auskunft & Löschung)\n' +
-          'Du hast das Recht:\n' +
-          '• Auskunft über deine gespeicherten Daten zu verlangen.\n' +
-          '• Deine Daten jederzeit zu löschen oder zu korrigieren. Du kannst deinen Geburtstag jederzeit aktualisieren oder eine Löschung verlangen (wende dich hierzu an ein Teammitglied).\n\n' +
-          'Diese Nachricht ist nur für dich sichtbar.'
-        )
-        .setColor('#FFA500') // Orange für das Server-Design
-        .setTimestamp()
-        .setFooter({
-          text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
-        });
-
-      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
-
-    // /datenloeschung
-    else if (commandName === 'datenloeschung') {
-      const deleted = await db.deleteUserBirthday(interaction.user.id);
-
-      const embed = new EmbedBuilder()
-        .setTitle('🗑️ Datenlöschung (DSGVO)')
-        .setDescription(
-          deleted
-            ? '✅ **Erfolgreich gelöscht!**\n\nAlle deine gespeicherten personenbezogenen Daten (User-ID und dein Geburtstag) wurden vollständig aus unserem System gelöscht. Du bist nicht mehr in der Datenbank hinterlegt.'
-            : 'ℹ️ **Keine Daten gefunden!**\n\nEs wurden keine gespeicherten personenbezogenen Daten zu deiner User-ID in unserem System gefunden.'
-        )
-        .setColor('#FFA500') // Orange für das Server-Design
-        .setTimestamp()
-        .setFooter({
-          text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
-        });
-
-      await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
 
     // /streamer
     else if (commandName === 'streamer') {
@@ -624,44 +681,7 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.reply({ embeds: [embed] });
     }
 
-    // --- Dynamische Voice Channels Commands ---
-    else if (['vc-rename', 'vc-limit', 'vc-lock', 'vc-unlock'].includes(commandName)) {
-      const channel = interaction.member.voice.channel;
-      if (!channel) {
-        return interaction.reply({ content: '❌ Du musst dich in deinem Voice-Channel befinden, um diesen Befehl auszuführen!', flags: MessageFlags.Ephemeral });
-      }
 
-      const isDynamic = await db.isDynamicChannel(channel.id);
-      if (!isDynamic) {
-        return interaction.reply({ content: '❌ Dieser Befehl kann nur in dynamisch erstellten Voice-Channels verwendet werden.', flags: MessageFlags.Ephemeral });
-      }
-
-      const ownerId = await db.getDynamicChannelOwner(channel.id);
-      if (ownerId !== interaction.user.id) {
-        return interaction.reply({ content: '❌ Nur der Ersteller dieses Voice-Channels kann ihn verwalten!', flags: MessageFlags.Ephemeral });
-      }
-
-      if (commandName === 'vc-rename') {
-        const name = interaction.options.getString('name');
-        const prefixedName = `📞│ ${name}`;
-        await channel.setName(prefixedName);
-        await interaction.reply({ content: `✅ Voice-Channel wurde in **${prefixedName}** umbenannt.`, flags: MessageFlags.Ephemeral });
-      }
-      else if (commandName === 'vc-limit') {
-        const limit = interaction.options.getInteger('anzahl');
-        await channel.setUserLimit(limit);
-        await interaction.reply({ content: `✅ Nutzerlimit wurde auf **${limit === 0 ? 'Unbegrenzt' : limit}** gesetzt.`, flags: MessageFlags.Ephemeral });
-      }
-      else if (commandName === 'vc-lock') {
-        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
-        await channel.permissionOverwrites.edit(interaction.user.id, { Connect: true });
-        await interaction.reply({ content: '🔒 Voice-Channel wurde für neue Nutzer gesperrt.', flags: MessageFlags.Ephemeral });
-      }
-      else if (commandName === 'vc-unlock') {
-        await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: null });
-        await interaction.reply({ content: '🔓 Voice-Channel ist wieder für alle geöffnet.', flags: MessageFlags.Ephemeral });
-      }
-    }
   } catch (error) {
     console.error(`Fehler bei Interaktion ${commandName}:`, error);
     try {

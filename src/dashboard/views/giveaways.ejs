@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Giveaways - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/giveaways' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <h1 class="page-title">Giveaways</h1>
+        </div>
+
+        <main class="main-content">
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">Verwalte und erstelle Giveaways auf deinem Server.</p>
+
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success"><i class="fa-solid fa-check-circle"></i> <%= successMsg %></div>
+            <% } %>
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= errorMsg %></div>
+            <% } %>
+
+            <div class="panel" style="margin-bottom: 2rem;">
+                <div class="panel-header">
+                    <h2>Neues Giveaway erstellen</h2>
+                </div>
+                <div class="panel-body">
+                    <form action="/dashboard/giveaways/create" method="POST" style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Zielkanal *</label>
+                            <select name="channelId" class="form-control" required style="width: 100%; max-width: 400px; padding: 0.5rem; border-radius: 4px;">
+                                <option value="">-- Kanal auswählen --</option>
+                                <% channels.forEach(c => { %>
+                                    <option value="<%= c.id %>"><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Titel des Giveaways *</label>
+                            <input type="text" name="title" class="form-control" placeholder="z.B. 1x Nitro Classic" required style="width: 100%; max-width: 400px; padding: 0.5rem; border-radius: 4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Beschreibung *</label>
+                            <textarea name="description" class="form-control" rows="4" placeholder="Beschreibe den Gewinn..." required style="width: 100%; max-width: 600px; padding: 0.5rem; border-radius: 4px; resize: vertical;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Banner Bild URL (Optional)</label>
+                            <input type="text" name="banner" class="form-control" placeholder="https://..." style="width: 100%; max-width: 400px; padding: 0.5rem; border-radius: 4px;">
+                        </div>
+                        <div class="form-group">
+                            <label>Gesponsert von (Optional)</label>
+                            <input type="text" name="hostedBy" class="form-control" placeholder="Username (z.B. thegrid)" style="width: 100%; max-width: 400px; padding: 0.5rem; border-radius: 4px;">
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; max-width: 600px;">
+                            <div class="form-group" style="flex: 1;">
+                                <label>Laufzeit (in Stunden) *</label>
+                                <input type="number" name="hours" class="form-control" step="0.1" min="0.1" value="24" required style="width: 100%; padding: 0.5rem; border-radius: 4px;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Anzahl Gewinner *</label>
+                                <input type="number" name="winnerCount" class="form-control" min="1" value="1" required style="width: 100%; padding: 0.5rem; border-radius: 4px;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label>Mindest-XP (0 = für alle) *</label>
+                                <input type="number" name="minXp" class="form-control" min="0" value="0" required style="width: 100%; padding: 0.5rem; border-radius: 4px;">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Giveaway starten</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h2>Aktive & Vergangene Giveaways</h2>
+                </div>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Titel</th>
+                            <th>Endet/Endete</th>
+                            <th>Gewinner</th>
+                            <th>Status</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% if (giveaways.length === 0) { %>
+                            <tr>
+                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Keine Giveaways gefunden.</td>
+                            </tr>
+                        <% } else { %>
+                            <% giveaways.forEach(g => { %>
+                                <tr>
+                                    <td><strong><%= g.title %></strong></td>
+                                    <td><%= new Date(g.endsAt).toLocaleString('de-DE') %></td>
+                                    <td><%= g.winnerCount %></td>
+                                    <td>
+                                        <% if (g.status === 'active') { %>
+                                            <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">Aktiv</span>
+                                        <% } else { %>
+                                            <span class="badge" style="background: rgba(107, 114, 128, 0.2); color: #9ca3af;">Beendet</span>
+                                        <% } %>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <% if (g.status === 'active') { %>
+                                                <form action="/dashboard/giveaways/<%= g.id %>/end" method="POST" onsubmit="return confirm('Möchtest du dieses Giveaway wirklich sofort beenden und auslosen?');">
+                                                    <button type="submit" class="btn" style="background: rgba(139, 92, 246, 0.2); color: #8b5cf6; padding: 0.25rem 0.5rem; font-size: 0.85rem;"><i class="fa-solid fa-flag-checkered"></i> Beenden</button>
+                                                </form>
+                                            <% } %>
+                                            <form action="/dashboard/giveaways/<%= g.id %>/delete" method="POST" onsubmit="return confirm('Möchtest du dieses Giveaway wirklich löschen? Die Nachricht im Discord wird ebenfalls entfernt.');">
+                                                <button type="submit" class="btn btn-danger" style="padding: 0.25rem 0.5rem; font-size: 0.85rem;"><i class="fa-solid fa-trash"></i> Löschen</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        <% } %>
+                    </tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+</body>
+</html>

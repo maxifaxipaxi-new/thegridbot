@@ -33,6 +33,10 @@
             <i class="fa-solid fa-cake-candles"></i>
             <span>Geburtstage</span>
         </a>
+        <a href="/dashboard/giveaways" class="nav-item <%= locals.currentPath === '/dashboard/giveaways' ? 'active' : '' %>">
+            <i class="fa-solid fa-gift"></i>
+            <span>Giveaways</span>
+        </a>
 
         <% if (user.isOwner) { %>
             <div style="margin: 16px 16px 8px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">Admin Tools</div>

@@ -1,4 +1,4 @@
-import { ChannelType, EmbedBuilder } from 'discord.js';
+import { ChannelType, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { db } from './database/database.js';
 
 const TARGET_VC_ID = '1294684126938660894';
@@ -28,18 +28,35 @@ export function setupDynamicVCs(client) {
         // Send embed to the voice channel's text chat
         const embed = new EmbedBuilder()
           .setTitle('⚙️ Dein temporärer Voice-Channel')
-          .setDescription(`Willkommen in deinem eigenen Voice-Channel, ${member}!\n\nDu kannst diesen Channel mit folgenden Befehlen verwalten (nur für dich nutzbar):`)
-          .addFields(
-            { name: '`/vc-rename <name>`', value: 'Benennt den Voice-Channel um.' },
-            { name: '`/vc-limit <anzahl>`', value: 'Setzt ein Nutzerlimit für den Channel (0 für unbegrenzt).' },
-            { name: '`/vc-lock`', value: 'Sperrt den Channel für neue Nutzer (niemand kann mehr beitreten).' },
-            { name: '`/vc-unlock`', value: 'Entsperrt den Channel wieder.' }
-          )
+          .setDescription(`Willkommen in deinem eigenen Voice-Channel, ${member}!\n\nNutze die Buttons unten, um deinen Kanal zu verwalten:`)
           .setColor('#FFA500')
           .setTimestamp();
 
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId('vc_rename')
+            .setLabel('Umbenennen')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('✏️'),
+          new ButtonBuilder()
+            .setCustomId('vc_limit')
+            .setLabel('Limit setzen')
+            .setStyle(ButtonStyle.Secondary)
+            .setEmoji('👥'),
+          new ButtonBuilder()
+            .setCustomId('vc_lock')
+            .setLabel('Sperren')
+            .setStyle(ButtonStyle.Danger)
+            .setEmoji('🔒'),
+          new ButtonBuilder()
+            .setCustomId('vc_unlock')
+            .setLabel('Entsperren')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('🔓')
+        );
+
         // Mention the user so they see it
-        await newChannel.send({ content: `${member}`, embeds: [embed] });
+        await newChannel.send({ content: `${member}`, embeds: [embed], components: [row] });
 
       } catch (err) {
         console.error('Fehler beim Erstellen des dynamischen Voice-Channels:', err);

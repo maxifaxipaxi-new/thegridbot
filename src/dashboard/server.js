@@ -765,6 +765,142 @@ export function startDashboard(client) {
     }
   });
 
+  // --- GIVEAWAYS ---
+  app.get('/dashboard/giveaways', checkAuth, async (req, res) => {
+    try {
+      const allGiveaways = await db.getAllGiveaways();
+      
+      let channels = [];
+      if (client.isReady()) {
+         const guild = client.guilds.cache.get('1294669609349283925');
+         if (guild) {
+            channels = guild.channels.cache
+              .filter(c => c.type === 0 || c.type === 5) // GuildText or GuildAnnouncement
+              .map(c => ({ id: c.id, name: c.name }))
+              .sort((a,b) => a.name.localeCompare(b.name));
+         }
+      }
+
+      res.render('giveaways', { 
+        user: req.session.user, 
+        giveaways: allGiveaways,
+        channels,
+        errorMsg: req.query.error, 
+        successMsg: req.query.success 
+      });
+    } catch(err) {
+      console.error('Fehler beim Laden der Giveaways:', err);
+      res.redirect('/dashboard?error=Fehler beim Laden der Giveaways');
+    }
+  });
+
+  app.post('/dashboard/giveaways/create', checkAuth, async (req, res) => {
+    const { channelId, title, description, banner, hostedBy, hours, winnerCount, minXp } = req.body;
+    
+    if (!channelId || !title || !description || !hours) {
+      return res.redirect('/dashboard/giveaways?error=Bitte alle Pflichtfelder ausfüllen');
+    }
+
+    try {
+      const endsAt = Date.now() + (parseFloat(hours) * 60 * 60 * 1000);
+      
+      const giveawayId = await db.createGiveaway({
+        channelId,
+        messageId: 'pending',
+        title,
+        description,
+        banner: banner || '',
+        hostedBy: hostedBy || '',
+        endsAt,
+        winnerCount: parseInt(winnerCount) || 1,
+        minXp: parseInt(minXp) || 0
+      });
+
+      // Send to discord
+      if (client.isReady()) {
+         const channel = client.channels.cache.get(channelId);
+         if (channel) {
+            let desc = description;
+            if (hostedBy) desc += `\n\n**Gestiftet von:** ${hostedBy}`;
+            desc += `\n**Endet:** <t:${Math.floor(endsAt/1000)}:R>`;
+            desc += `\n**Gewinner:** ${parseInt(winnerCount) || 1}`;
+            
+            const embed = new EmbedBuilder()
+              .setTitle(`🎉 ${title}`)
+              .setDescription(desc)
+              .setColor('#8b5cf6')
+              .setFooter({ text: 'Klicke auf den Button, um teilzunehmen!' });
+              
+            if (banner) embed.setImage(banner);
+
+            const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+            const row = new ActionRowBuilder().addComponents(
+               new ButtonBuilder()
+                 .setCustomId(`giveaway_join_${giveawayId}`)
+                 .setLabel('🎉 Teilnehmen')
+                 .setStyle(ButtonStyle.Primary)
+            );
+
+            const msg = await channel.send({ embeds: [embed], components: [row] });
+            await db.updateGiveawayMessageId(giveawayId, msg.id);
+         }
+      }
+      
+      res.redirect('/dashboard/giveaways?success=Giveaway erfolgreich erstellt!');
+    } catch(err) {
+      console.error('Fehler beim Erstellen des Giveaways:', err);
+      res.redirect('/dashboard/giveaways?error=Fehler beim Erstellen des Giveaways');
+    }
+  });
+
+  app.post('/dashboard/giveaways/:id/end', checkAuth, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const giveaway = await db.getGiveaway(id);
+      if (!giveaway || giveaway.status !== 'active') {
+        return res.redirect('/dashboard/giveaways?error=Giveaway nicht gefunden oder bereits beendet.');
+      }
+
+      const { endGiveaway } = await import('../../giveaways.js');
+      await endGiveaway(client, giveaway);
+
+      res.redirect('/dashboard/giveaways?success=Giveaway wurde erfolgreich vorzeitig beendet und ausgelost!');
+    } catch (err) {
+      console.error(err);
+      res.redirect('/dashboard/giveaways?error=Fehler beim Beenden.');
+    }
+  });
+
+  app.post('/dashboard/giveaways/:id/delete', checkAuth, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const giveaway = await db.getGiveaway(id);
+      if (!giveaway) {
+        return res.redirect('/dashboard/giveaways?error=Giveaway nicht gefunden.');
+      }
+      
+      // Optionally delete the message on discord
+      if (client.isReady() && giveaway.messageId !== 'pending') {
+        try {
+          const channel = client.channels.cache.get(giveaway.channelId);
+          if (channel) {
+            const message = await channel.messages.fetch(giveaway.messageId);
+            if (message) await message.delete();
+          }
+        } catch (e) {
+          // Ignore if message already deleted or missing perms
+        }
+      }
+
+      await db.deleteGiveaway(id);
+
+      res.redirect('/dashboard/giveaways?success=Giveaway wurde gelöscht.');
+    } catch (err) {
+      console.error(err);
+      res.redirect('/dashboard/giveaways?error=Fehler beim Löschen.');
+    }
+  });
+
   // Server Start
   app.listen(PORT, () => {
     console.log(`Dashboard Web Server läuft auf Port ${PORT}`);
