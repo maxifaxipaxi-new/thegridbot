@@ -1,9 +1,8 @@
 import { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, ActivityType, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import dotenv from 'dotenv';
 import { db } from './database/database.js';
-import { startBirthdayScheduler } from './scheduler.js';
 import { startDashboard } from './dashboard/server.js';
-import { startAnnouncementsScheduler } from './announcements.js';
+import { startAnnouncementsScheduler, handleTwitchAnnouncementButton } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
 import { startAutoDeleteScheduler } from './auto-delete.js';
 import { handleTicketSetup, handleTicketButton } from './tickets.js';
@@ -39,8 +38,6 @@ client.once('clientReady', async () => {
     status: 'dnd',
   });
 
-  // Starte den Geburtstags-Scheduler
-  startBirthdayScheduler(client);
   startAnnouncementsScheduler(client);
   startAutoDeleteScheduler(client);
   startBackupScheduler(client);
@@ -156,6 +153,9 @@ client.on('voiceStateUpdate', (oldState, newState) => {
 // Event-Handler für Slash-Commands und Buttons
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton()) {
+    if (interaction.customId.startsWith('announce_twitch_')) {
+      return handleTwitchAnnouncementButton(interaction);
+    }
     if (interaction.customId.startsWith('move_waiter_')) {
       return handleWaitingRoomButton(interaction);
     }
@@ -434,7 +434,6 @@ client.on('interactionCreate', async (interaction) => {
             name: '🚀 Slash-Befehle (mit / ausführen)',
             value: '`/help` - Zeigt diese Hilfe-Übersicht.\n' +
               '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
-              '`/geburtstag <tag> <monat>` - Trage deinen Geburtstag ein.\n' +
               '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
               '`/streamer` - Infos für Content Creator & Streamer.'
           }
@@ -449,27 +448,7 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.reply({ embeds: [embed] });
     }
 
-    // /geburtstag tag:X monat:Y
-    else if (commandName === 'geburtstag') {
-      const tag = interaction.options.getInteger('tag');
-      const monat = interaction.options.getInteger('monat');
 
-      // Plausibilitätsprüfung für Tage pro Monat
-      const maxDays = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-      if (tag > maxDays[monat]) {
-        return interaction.reply({
-          content: `❌ Ungültiges Datum! Der Monat **${monat}** hat keine **${tag}** Tage.`,
-          flags: MessageFlags.Ephemeral
-        });
-      }
-
-      await db.setUserBirthday(interaction.user.id, tag, monat);
-
-      await interaction.reply({
-        content: `🎉 Dein Geburtstag wurde erfolgreich auf den **${tag}.${monat}.** festgelegt! Ich werde dir an diesem Tag gratulieren.`,
-        flags: MessageFlags.Ephemeral
-      });
-    }
 
 
     // /streamer

@@ -20,20 +20,10 @@ async function migrate() {
       console.log(`Migrated ${Object.keys(data.users).length} users.`);
     }
 
-    // Birthdays
-    if (data.birthdays) {
-      for (const [userId, b] of Object.entries(data.birthdays)) {
-        await db.setUserBirthday(userId, b.day, b.month);
-      }
-      console.log(`Migrated ${Object.keys(data.birthdays).length} birthdays.`);
-    }
-
     // Guilds
     if (data.guilds) {
       for (const [guildId, g] of Object.entries(data.guilds)) {
-        if (g.birthdayChannelId) {
-          await db.setBirthdayChannel(guildId, g.birthdayChannelId);
-        }
+        // Migration no longer needs birthdayChannelId
       }
       console.log(`Migrated ${Object.keys(data.guilds).length} guilds.`);
     }
@@ -41,16 +31,10 @@ async function migrate() {
     // Announcements
     if (data.announcements) {
       for (const t of (data.announcements.twitch || [])) {
-        await db.addTwitchStreamer(t);
-      }
-      for (const y of (data.announcements.youtube || [])) {
-        await db.addYouTubeChannel(y);
+        await db.addTwitchStreamer(t, '');
       }
       for (const s of (data.announcements.postedStreams || [])) {
         await db.markStreamPosted(s);
-      }
-      for (const v of (data.announcements.postedVideos || [])) {
-        await db.markVideoPosted(v);
       }
       console.log('Migrated announcements.');
     }

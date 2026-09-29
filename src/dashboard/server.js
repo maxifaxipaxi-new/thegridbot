@@ -250,30 +250,10 @@ export function startDashboard(client) {
 
   app.post('/dashboard/announcements/add', checkAuth, async (req, res) => {
     const type = req.body.type;
-    let id = req.body.id?.trim();
-    if (id) {
-      if (type === 'twitch') {
-        await db.addTwitchStreamer(id);
-      } else if (type === 'youtube') {
-        // Falls der Nutzer einen @Handle eingibt (oder nicht UC...)
-        if (id.startsWith('@') || !id.startsWith('UC')) {
-          try {
-            const handle = id.startsWith('@') ? id : `@${id}`;
-            const response = await fetch(`https://www.youtube.com/${handle}`);
-            const html = await response.text();
-            const match = html.match(/channel\/([Uu][Cc][a-zA-Z0-9_-]{22})/);
-            if (match && match[1]) {
-              id = match[1]; // Handle erfolgreich in UC-ID umgewandelt
-            } else {
-              return res.redirect('/dashboard/announcements?error=YouTube Kanal nicht gefunden');
-            }
-          } catch (err) {
-            console.error('Fehler beim Auflösen des YouTube Handles:', err);
-            return res.redirect('/dashboard/announcements?error=Netzwerkfehler bei YouTube');
-          }
-        }
-        await db.addYouTubeChannel(id);
-      }
+    const id = req.body.id?.trim();
+    const discordUserId = req.body.discordUserId?.trim();
+    if (id && type === 'twitch' && discordUserId) {
+      await db.addTwitchStreamer(id, discordUserId);
     }
     res.redirect('/dashboard/announcements');
   });
@@ -281,9 +261,8 @@ export function startDashboard(client) {
   app.post('/dashboard/announcements/remove', checkAuth, async (req, res) => {
     const type = req.body.type;
     const id = req.body.id;
-    if (id) {
-      if (type === 'twitch') await db.removeTwitchStreamer(id);
-      if (type === 'youtube') await db.removeYouTubeChannel(id);
+    if (id && type === 'twitch') {
+      await db.removeTwitchStreamer(id);
     }
     res.redirect('/dashboard/announcements');
   });
@@ -655,20 +634,6 @@ export function startDashboard(client) {
     }
   });
 
-  // Birthdays (Mods/Team)
-  app.get('/dashboard/birthdays', checkAuth, async (req, res) => {
-    const birthdays = await db.getAllBirthdays();
-    res.render('birthdays', { user: req.session.user, birthdays, errorMsg: req.query.error, successMsg: req.query.success });
-  });
-
-  app.post('/dashboard/birthdays/delete', checkAuth, async (req, res) => {
-    const userId = req.body.userId?.trim();
-    if (userId) {
-      await db.deleteUserBirthday(userId);
-      return res.redirect('/dashboard/birthdays?success=Geburtstag gelöscht');
-    }
-    res.redirect('/dashboard/birthdays');
-  });
 
   // Bot Management Routes (Owner Only)
   app.post('/api/bot/start', checkOwner, async (req, res) => {

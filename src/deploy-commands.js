@@ -17,24 +17,6 @@ const commands = [
     .setDescription('Hol dir deinen wöchentlichen 100 XP Bonus ab! (Alle 7 Tage möglich)'),
 
   new SlashCommandBuilder()
-    .setName('geburtstag')
-    .setDescription('Trage deinen Geburtstag ein, um an dem Tag beglückwünscht zu werden.')
-    .addIntegerOption(option =>
-      option.setName('tag')
-        .setDescription('Der Tag deines Geburtstags (1-31)')
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(31)
-    )
-    .addIntegerOption(option =>
-      option.setName('monat')
-        .setDescription('Der Monat deines Geburtstags (1-12)')
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(12)
-    ),
-
-  new SlashCommandBuilder()
     .setName('regeln')
     .setDescription('Zeigt einen wichtigen Hinweis zu den Server-Regeln.'),
 

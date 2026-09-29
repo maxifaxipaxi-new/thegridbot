@@ -10,7 +10,7 @@
         </div>
 
         <main class="main-content">
-            <p style="color: var(--text-muted); margin-bottom: 32px;">Verwalte die Twitch-Streamer und YouTube-Kanäle, die automatisch in Kanal <code style="color: var(--accent-color);">1294799305357660214</code> angekündigt werden sollen.</p>
+            <p style="color: var(--text-muted); margin-bottom: 32px;">Verwalte die Twitch-Streamer, die automatisch in Kanal <code style="color: var(--accent-color);">1294799305357660214</code> angekündigt werden sollen.</p>
 
             <% if (typeof errorMsg !== 'undefined' && errorMsg) { %>
                 <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= errorMsg %></div>
@@ -28,12 +28,15 @@
                         <% if (config.twitch.length === 0) { %>
                             <div style="color: var(--text-muted); font-style: italic; font-size: 14px;">Keine Twitch-Streamer eingetragen.</div>
                         <% } else { %>
-                            <% config.twitch.forEach(function(username) { %>
+                            <% config.twitch.forEach(function(streamer) { %>
                                 <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-weight: 500;"><%= username %></span>
+                                    <div>
+                                        <span style="font-weight: 500;"><%= streamer.username %></span>
+                                        <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">(Discord: <%= streamer.discordUserId %>)</span>
+                                    </div>
                                     <form action="/dashboard/announcements/remove" method="POST" style="margin:0;">
                                         <input type="hidden" name="type" value="twitch">
-                                        <input type="hidden" name="id" value="<%= username %>">
+                                        <input type="hidden" name="id" value="<%= streamer.username %>">
                                         <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);"><i class="fa-solid fa-trash"></i></button>
                                     </form>
                                 </div>
@@ -44,41 +47,12 @@
                     <form action="/dashboard/announcements/add" method="POST" style="display: flex; gap: 8px;">
                         <input type="hidden" name="type" value="twitch">
                         <input type="text" name="id" class="form-control" style="flex: 1;" placeholder="Benutzername (z.B. montanablack)" required>
+                        <input type="text" name="discordUserId" class="form-control" style="flex: 1;" placeholder="Discord User ID" required>
                         <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i></button>
                     </form>
                 </div>
 
-                <!-- YOUTUBE -->
-                <div class="panel" style="margin-bottom: 0;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--glass-border);">
-                        <i class="fa-brands fa-youtube" style="font-size: 24px; color: #FF0000;"></i>
-                        <h2 style="margin: 0;">YouTube Videos</h2>
-                    </div>
 
-                    <div style="margin-bottom: 24px;">
-                        <% if (config.youtube.length === 0) { %>
-                            <div style="color: var(--text-muted); font-style: italic; font-size: 14px;">Keine YouTube-Kanäle eingetragen.</div>
-                        <% } else { %>
-                            <% config.youtube.forEach(function(channelId) { %>
-                                <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <span style="font-family: monospace; font-size: 12px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px;"><%= channelId %></span>
-                                    <form action="/dashboard/announcements/remove" method="POST" style="margin:0;">
-                                        <input type="hidden" name="type" value="youtube">
-                                        <input type="hidden" name="id" value="<%= channelId %>">
-                                        <button type="submit" class="btn btn-outline" style="padding: 4px 10px; font-size: 12px; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);"><i class="fa-solid fa-trash"></i></button>
-                                    </form>
-                                </div>
-                            <% }); %>
-                        <% } %>
-                    </div>
-
-                    <form action="/dashboard/announcements/add" method="POST" style="display: flex; gap: 8px;">
-                        <input type="hidden" name="type" value="youtube">
-                        <input type="text" name="id" class="form-control" style="flex: 1;" placeholder="@Name oder ID (z.B. @MontanaBlack)" required>
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i></button>
-                    </form>
-                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 12px;"><i class="fa-solid fa-circle-info"></i> Tipp: Du kannst einfach den <b>@Benutzernamen</b> eintragen. Das System wandelt ihn automatisch in die richtige ID um!</p>
-                </div>
             </div>
         </main>
         <%- include('partials/footer') %>

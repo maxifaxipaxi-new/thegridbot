@@ -30,33 +30,18 @@ class Database {
         lastWeeklyTimestamp INTEGER DEFAULT 0
       );
       
-      CREATE TABLE IF NOT EXISTS birthdays (
-        userId TEXT PRIMARY KEY,
-        day INTEGER,
-        month INTEGER
-      );
-      
       CREATE TABLE IF NOT EXISTS guilds (
         id TEXT PRIMARY KEY,
-        birthdayChannelId TEXT,
         radioChannelId TEXT
       );
       
       CREATE TABLE IF NOT EXISTS announcements_twitch (
-        username TEXT PRIMARY KEY
-      );
-      
-      CREATE TABLE IF NOT EXISTS announcements_youtube (
-        channelId TEXT PRIMARY KEY
+        username TEXT PRIMARY KEY,
+        discordUserId TEXT
       );
       
       CREATE TABLE IF NOT EXISTS announcements_posted_streams (
         streamId TEXT PRIMARY KEY,
-        timestamp INTEGER
-      );
-      
-      CREATE TABLE IF NOT EXISTS announcements_posted_videos (
-        videoId TEXT PRIMARY KEY,
         timestamp INTEGER
       );
       
@@ -135,55 +120,14 @@ class Database {
       await db.exec('ALTER TABLE guilds ADD COLUMN radioChannelId TEXT');
     } catch (err) {}
 
+    try {
+      await db.exec('ALTER TABLE announcements_twitch ADD COLUMN discordUserId TEXT');
+    } catch (err) {}
+
     return db;
   }
 
-  // --- Birthdays ---
-  async setUserBirthday(userId, day, month) {
-    const db = await this.dbPromise;
-    await db.run('INSERT INTO birthdays (userId, day, month) VALUES (?, ?, ?) ON CONFLICT(userId) DO UPDATE SET day = excluded.day, month = excluded.month', [userId, day, month]);
-  }
-
-  async deleteUserBirthday(userId) {
-    const db = await this.dbPromise;
-    const result = await db.run('DELETE FROM birthdays WHERE userId = ?', [userId]);
-    return result.changes > 0;
-  }
-
-  async getUserBirthday(userId) {
-    const db = await this.dbPromise;
-    const row = await db.get('SELECT day, month FROM birthdays WHERE userId = ?', [userId]);
-    return row || null;
-  }
-
-  async getUsersWithBirthdayToday(day, month) {
-    const db = await this.dbPromise;
-    const rows = await db.all('SELECT userId FROM birthdays WHERE day = ? AND month = ?', [day, month]);
-    return rows.map(r => r.userId);
-  }
-
-  async getAllBirthdays() {
-    const db = await this.dbPromise;
-    const rows = await db.all('SELECT userId, day, month FROM birthdays');
-    const result = {};
-    for (const r of rows) {
-      result[r.userId] = { day: r.day, month: r.month };
-    }
-    return result;
-  }
-
   // --- Guilds ---
-  async setBirthdayChannel(guildId, channelId) {
-    const db = await this.dbPromise;
-    await db.run('INSERT INTO guilds (id, birthdayChannelId) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET birthdayChannelId = excluded.birthdayChannelId', [guildId, channelId]);
-  }
-
-  async getBirthdayChannel(guildId) {
-    const db = await this.dbPromise;
-    const row = await db.get('SELECT birthdayChannelId FROM guilds WHERE id = ?', [guildId]);
-    return row ? row.birthdayChannelId : null;
-  }
-
   async setRadioChannel(guildId, channelId) {
     const db = await this.dbPromise;
     if (channelId === null) {
@@ -202,46 +146,32 @@ class Database {
 
   async getAllGuildConfigs() {
     const db = await this.dbPromise;
-    const rows = await db.all('SELECT id, birthdayChannelId FROM guilds');
+    const rows = await db.all('SELECT id FROM guilds');
     const result = {};
-    for (const r of rows) result[r.id] = { birthdayChannelId: r.birthdayChannelId };
+    for (const r of rows) result[r.id] = {};
     return result;
   }
 
   // --- Announcements ---
   async getAnnouncementsConfig() {
     const db = await this.dbPromise;
-    const twitch = await db.all('SELECT username FROM announcements_twitch');
-    const youtube = await db.all('SELECT channelId FROM announcements_youtube');
+    const twitch = await db.all('SELECT username, discordUserId FROM announcements_twitch');
     const streams = await db.all('SELECT streamId FROM announcements_posted_streams ORDER BY timestamp DESC LIMIT 100');
-    const videos = await db.all('SELECT videoId FROM announcements_posted_videos ORDER BY timestamp DESC LIMIT 100');
     
     return {
-      twitch: twitch.map(r => r.username),
-      youtube: youtube.map(r => r.channelId),
-      postedStreams: streams.map(r => r.streamId),
-      postedVideos: videos.map(r => r.videoId)
+      twitch: twitch,
+      postedStreams: streams.map(r => r.streamId)
     };
   }
 
-  async addTwitchStreamer(username) {
+  async addTwitchStreamer(username, discordUserId) {
     const db = await this.dbPromise;
-    await db.run('INSERT OR IGNORE INTO announcements_twitch (username) VALUES (?)', [username]);
+    await db.run('INSERT OR REPLACE INTO announcements_twitch (username, discordUserId) VALUES (?, ?)', [username, discordUserId]);
   }
 
   async removeTwitchStreamer(username) {
     const db = await this.dbPromise;
     await db.run('DELETE FROM announcements_twitch WHERE username = ?', [username]);
-  }
-
-  async addYouTubeChannel(channelId) {
-    const db = await this.dbPromise;
-    await db.run('INSERT OR IGNORE INTO announcements_youtube (channelId) VALUES (?)', [channelId]);
-  }
-
-  async removeYouTubeChannel(channelId) {
-    const db = await this.dbPromise;
-    await db.run('DELETE FROM announcements_youtube WHERE channelId = ?', [channelId]);
   }
 
   async hasPostedStream(streamId) {
@@ -253,17 +183,6 @@ class Database {
   async markStreamPosted(streamId) {
     const db = await this.dbPromise;
     await db.run('INSERT OR IGNORE INTO announcements_posted_streams (streamId, timestamp) VALUES (?, ?)', [streamId, Date.now()]);
-  }
-
-  async hasPostedVideo(videoId) {
-    const db = await this.dbPromise;
-    const row = await db.get('SELECT 1 FROM announcements_posted_videos WHERE videoId = ?', [videoId]);
-    return !!row;
-  }
-
-  async markVideoPosted(videoId) {
-    const db = await this.dbPromise;
-    await db.run('INSERT OR IGNORE INTO announcements_posted_videos (videoId, timestamp) VALUES (?, ?)', [videoId, Date.now()]);
   }
 
   // --- Dynamic Voice Channels ---

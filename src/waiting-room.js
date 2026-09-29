@@ -11,7 +11,6 @@ export async function handleWaitingRoomJoin(oldState, newState) {
   // Nur den spezifischen Radio/Music Bot (1522221672848035870) ignorieren
   if (newState.member.id === '1522221672848035870') return;
 
-  console.log(`[Warteraum Debug] ${newState.member.user.username} ist in Channel ${newState.channelId} gejoint. Warteraum ID ist: ${WAITING_ROOM_ID}`);
 
   // Prüfen, ob der neue Channel der Warteraum ist
   if (newState.channelId === WAITING_ROOM_ID) {
@@ -20,24 +19,19 @@ export async function handleWaitingRoomJoin(oldState, newState) {
     const notificationChannel = guild.channels.cache.get(NOTIFICATION_CHANNEL_ID);
 
     if (!targetChannel) {
-      console.log('[Warteraum Debug] Ziel-Channel wurde nicht gefunden!');
       return;
     }
     if (!notificationChannel) {
-      console.log('[Warteraum Debug] Benachrichtigungs-Channel wurde nicht gefunden!');
       return;
     }
 
     // Aktuelle Voice States in der Gilde prüfen (als Fallback, falls channel.members nicht greift)
     const voiceStatesInTarget = guild.voiceStates.cache.filter(vs => vs.channelId === TARGET_ROOM_ID);
     
-    console.log(`[Warteraum Debug] Alle aktiven Voice-Channel IDs:`, [...new Set(guild.voiceStates.cache.map(vs => vs.channelId))]);
-    console.log(`[Warteraum Debug] User im Target Room:`, guild.voiceStates.cache.filter(vs => vs.channelId === TARGET_ROOM_ID).map(vs => vs.id));
-    
+
     // Wir ignorieren nur den explizit genannten Bot (1522221672848035870)
     const hasHumanInTarget = voiceStatesInTarget.some(vs => vs.id !== '1522221672848035870');
-    console.log(`[Warteraum Debug] Menschen im Ziel-Channel? ${hasHumanInTarget} (Gefundene VoiceStates im Ziel: ${voiceStatesInTarget.size})`);
-    
+
     if (hasHumanInTarget) {
       const embed = new EmbedBuilder()
         .setTitle('⏳ Jemand wartet!')
