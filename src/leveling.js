@@ -4,8 +4,7 @@ import { EmbedBuilder } from 'discord.js';
 const COOLDOWN_MS = 60 * 1000; // 1 minute cooldown for messages
 const VOICE_INTERVAL_MS = 60 * 1000; // 1 minute interval for voice check
 const DAILY_VOICE_MAX = 100; // Max 100 voice points per day
-const INACTIVITY_PENALTY = 10; // XP to deduct
-const INACTIVITY_HOURS = 40; // Hours of inactivity before penalty starts
+
 
 export const LEVEL_ROLES = {
   1: '1526257241785765932',
@@ -74,35 +73,6 @@ export function setupLeveling(client) {
         });
       });
 
-      // Handle Inactivity Penalty
-      const now = Date.now();
-      for (const [userId, user] of Object.entries(allUsers)) {
-         if (user.lastMessageTimestamp > 0) {
-           const hoursInactive = (now - user.lastMessageTimestamp) / (1000 * 60 * 60);
-           
-           if (hoursInactive >= INACTIVITY_HOURS) {
-              if (!user.lastPenaltyTimestamp) user.lastPenaltyTimestamp = 0;
-              const daysSinceLastPenalty = (now - user.lastPenaltyTimestamp) / (1000 * 60 * 60 * 24);
-              if (daysSinceLastPenalty >= 1) {
-                 user.xp = Math.max(0, user.xp - INACTIVITY_PENALTY);
-                 user.lastPenaltyTimestamp = now;
-                 
-                 let guild = null;
-                 let member = null;
-                 if (client.isReady()) {
-                    guild = client.guilds.cache.get('1294669609349283925');
-                    if (guild) {
-                       try {
-                          member = await guild.members.fetch(userId);
-                       } catch(e) {}
-                    }
-                 }
-                 await checkLevelUp(client, guild, member, user);
-                 await db.updateUser(userId, user);
-              }
-           }
-         }
-      }
 
     } catch (err) {
       console.error('Fehler im Leveling Interval:', err);
