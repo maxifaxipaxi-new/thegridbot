@@ -22,8 +22,15 @@ export function setupDynamicVCs(client) {
         // Save channel and owner in DB
         await db.addDynamicChannel(newChannel.id, member.id);
 
-        // Move member to the new channel
-        await member.voice.setChannel(newChannel);
+        try {
+          // Move member to the new channel
+          await member.voice.setChannel(newChannel);
+        } catch (moveErr) {
+          console.error('User left before moving to dynamic VC. Deleting channel...', moveErr.message);
+          await newChannel.delete('Nutzer hat den Voice Channel vorher verlassen').catch(() => {});
+          await db.removeDynamicChannel(newChannel.id);
+          return;
+        }
 
         // Send embed to the voice channel's text chat
         const embed = new EmbedBuilder()
