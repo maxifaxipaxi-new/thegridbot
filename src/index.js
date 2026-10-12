@@ -4,7 +4,6 @@ import { db } from './database/database.js';
 import { startDashboard } from './dashboard/server.js';
 import { startAnnouncementsScheduler, handleTwitchAnnouncementButton } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
-import { startAutoDeleteScheduler } from './auto-delete.js';
 import { handleTicketButton } from './tickets.js';
 import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost, checkLevelUp } from './leveling.js';
 import { startBackupScheduler } from './backup.js';
@@ -40,7 +39,6 @@ client.once('clientReady', async () => {
   });
 
   startAnnouncementsScheduler(client);
-  startAutoDeleteScheduler(client);
   startBackupScheduler(client);
   startGiveawayScheduler(client);
   console.log('Giveaway Scheduler gestartet (läuft minütlich).');
@@ -74,13 +72,6 @@ client.on('messageCreate', async (message) => {
 
   // XP Handler aufrufen
   await handleMessageXP(message);
-
-  // Reagiere mit ⏳ in dem Codes-Channel
-  if (message.channel.id === '1519069474559496202') {
-    message.react('⏳').catch(err => {
-      console.error('Fehler beim Reagieren auf Code-Nachricht:', err);
-    });
-  }
 
   if (!message.content.startsWith(PREFIX)) return;
 
