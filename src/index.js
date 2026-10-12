@@ -418,19 +418,24 @@ client.on('interactionCreate', async (interaction) => {
         'Wir freuen uns sehr über die Zusammenarbeit mit unseren offiziellen Partnern!\n' +
         'Hier findest du eine Übersicht über alle Partner und ihre Projekte:\n\n' +
         partners.map(p => {
-          return `### 🤝 ${p.name}\n${p.description}\n🔗 **Website / Link:** [${p.link}](${p.link})`;
+          return `### 🤝 ${p.name}\n${p.description}`;
         }).join('\n\n───────────────\n\n')
       );
 
       const components = [];
       let currentRow = new ActionRowBuilder();
       for (const p of partners) {
-        if (p.link && (p.link.startsWith('http://') || p.link.startsWith('https://'))) {
+        let url = p.link ? p.link.trim() : '';
+        if (url) {
+          if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+          }
           currentRow.addComponents(
             new ButtonBuilder()
               .setLabel(p.name.length > 80 ? p.name.substring(0, 77) + '...' : p.name)
               .setStyle(ButtonStyle.Link)
-              .setURL(p.link)
+              .setURL(url)
+              .setEmoji('🔗')
           );
           if (currentRow.components.length === 5) {
             components.push(currentRow);
