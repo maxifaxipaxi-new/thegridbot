@@ -29,11 +29,6 @@ const commands = [
     .setDescription('Informationen für Content Creator & Streamer bezüglich Kooperationen.'),
 
   new SlashCommandBuilder()
-    .setName('ticketsetup')
-    .setDescription('Erstellt das Ticket-Panel im aktuellen Kanal (Nur für Moderatoren).')
-    .setDefaultMemberPermissions(0), // requires admin/mod perms implicitly, but we also check role inside
-
-  new SlashCommandBuilder()
     .setName('level')
     .setDescription('Zeigt dein aktuelles Level und XP an.'),
 
@@ -57,6 +52,33 @@ const commands = [
   new SlashCommandBuilder()
     .setName('partner')
     .setDescription('Erfahre mehr über unsere offiziellen Partner & Kooperationen!'),
+
+  new SlashCommandBuilder()
+    .setName('gameslist')
+    .setDescription('Zeigt alle verfügbaren Spiele an, für die Lobby-Alerts existieren.'),
+
+  new SlashCommandBuilder()
+    .setName('gamevorschlagen')
+    .setDescription('Schlage ein neues Spiel für die Lobby-Alerts vor.')
+    .addStringOption(option =>
+      option.setName('name')
+        .setDescription('Der genaue Name des Spiels (wie auf Steam/Epic/EA)')
+        .setRequired(true)
+    )
+    .addStringOption(option =>
+      option.setName('plattform')
+        .setDescription('Plattform (z.B. Steam, Epic, EA, Ubisoft, Crossplay)')
+        .setRequired(false)
+    ),
+
+  new SlashCommandBuilder()
+    .setName('games')
+    .setDescription('Zeigt deine oder die abonnierten Spiele eines anderen Users an.')
+    .addUserOption(option =>
+      option.setName('user')
+        .setDescription('Der User, dessen Spiele du einsehen möchtest (optional)')
+        .setRequired(false)
+    ),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {

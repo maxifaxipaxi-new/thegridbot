@@ -10,7 +10,51 @@
         </div>
 
         <main class="main-content">
-            <p style="color: var(--text-muted); margin-bottom: 32px;">Übersicht aller aktiven und geschlossenen Support-Tickets.</p>
+            <p style="color: var(--text-muted); margin-bottom: 24px;">Übersicht aller aktiven und geschlossenen Support-Tickets sowie Steuerung des Ticket-Panels.</p>
+
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error" style="margin-bottom: 24px; padding: 16px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 12px; color: #f8fafc;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-right: 8px;"></i> <%= errorMsg %>
+                </div>
+            <% } %>
+
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success" style="margin-bottom: 24px; padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 12px; color: #f8fafc;">
+                    <i class="fa-solid fa-check-circle" style="color: var(--success); margin-right: 8px;"></i> <%= successMsg %>
+                </div>
+            <% } %>
+
+            <!-- Support-Panel im Discord posten -->
+            <div class="panel" style="margin-bottom: 32px; border-left: 4px solid var(--primary-color);">
+                <div style="margin-bottom: 16px;">
+                    <h3 style="display: flex; align-items: center; gap: 8px; margin: 0 0 6px 0;">
+                        <i class="fa-solid fa-paper-plane" style="color: var(--primary-color);"></i>
+                        Support-Panel in Discord-Kanal posten
+                    </h3>
+                    <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+                        Sendet das offizielle <b>🎫 Support Ticket</b> Embed-Panel mit dem Button "Ticket erstellen" in den ausgewählten Kanal und pinnt es fest.
+                    </p>
+                </div>
+
+                <form action="/dashboard/tickets/post-panel" method="POST">
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: flex-end;">
+                        <div class="form-group">
+                            <label class="form-label" for="ticket-channel" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">
+                                Ziel-Kanal auswählen *
+                            </label>
+                            <select id="ticket-channel" name="channelId" class="form-control" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                                <option value="" disabled selected>-- Bitte Discord-Kanal auswählen --</option>
+                                <% (locals.channels || []).forEach(c => { %>
+                                    <option value="<%= c.id %>"># <%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px; height: 42px;">
+                            <i class="fa-solid fa-share-from-square"></i> Panel jetzt posten
+                        </button>
+                    </div>
+                </form>
+            </div>
 
             <div class="panel">
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--glass-border);">

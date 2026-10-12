@@ -5,12 +5,13 @@ import { startDashboard } from './dashboard/server.js';
 import { startAnnouncementsScheduler, handleTwitchAnnouncementButton } from './announcements.js';
 import { setupDynamicVCs } from './dynamic-vc.js';
 import { startAutoDeleteScheduler } from './auto-delete.js';
-import { handleTicketSetup, handleTicketButton } from './tickets.js';
+import { handleTicketButton } from './tickets.js';
 import { setupLeveling, handleMessageXP, getRequiredXP, LEVEL_THRESHOLDS, LEVEL_ROLES, checkGridBoost, checkLevelUp } from './leveling.js';
 import { startBackupScheduler } from './backup.js';
 import { startRadio } from './radio.js';
 import { handleWaitingRoomJoin, handleWaitingRoomButton } from './waiting-room.js';
 import { startGiveawayScheduler } from './giveaways.js';
+import { startLobbyScheduler, handleLobbyInteraction, setupThreadDeleteListener } from './lobby-system.js';
 
 dotenv.config();
 
@@ -43,6 +44,9 @@ client.once('clientReady', async () => {
   startBackupScheduler(client);
   startGiveawayScheduler(client);
   console.log('Giveaway Scheduler gestartet (läuft minütlich).');
+  startLobbyScheduler(client);
+  console.log('Lobby & Codes Scheduler gestartet (läuft minütlich).');
+  setupThreadDeleteListener(client);
 
   // Dashboard starten
   startDashboard(client);
@@ -166,6 +170,9 @@ client.on('guildMemberRemove', async (member) => {
 // Event-Handler für Slash-Commands und Buttons
 client.on('interactionCreate', async (interaction) => {
   if (interaction.isButton()) {
+    if (interaction.customId.startsWith('lobby_') || interaction.customId.startsWith('lfg_')) {
+      return handleLobbyInteraction(interaction);
+    }
     if (interaction.customId.startsWith('announce_twitch_')) {
       return handleTwitchAnnouncementButton(interaction);
     }
@@ -331,6 +338,17 @@ client.on('interactionCreate', async (interaction) => {
         return interaction.reply({ content: `✅ Nutzerlimit wurde auf **${limit === 0 ? 'Unbegrenzt' : limit}** gesetzt.`, flags: MessageFlags.Ephemeral });
       }
     }
+
+    if (interaction.customId.startsWith('lobby_') || interaction.customId.startsWith('lfg_')) {
+      return handleLobbyInteraction(interaction);
+    }
+  }
+
+  // Select-Menus für Lobby / Games
+  if (interaction.isStringSelectMenu()) {
+    if (interaction.customId.startsWith('lobby_') || interaction.customId.startsWith('games_')) {
+      return handleLobbyInteraction(interaction);
+    }
   }
 
   if (!interaction.isChatInputCommand()) return;
@@ -338,9 +356,97 @@ client.on('interactionCreate', async (interaction) => {
   const { commandName } = interaction;
 
   try {
-    // /ticketsetup
-    if (commandName === 'ticketsetup') {
-      return handleTicketSetup(interaction);
+    // /gameslist
+    if (commandName === 'gameslist') {
+      const games = await db.getAllGames();
+      if (!games || games.length === 0) {
+        return interaction.reply({
+          content: 'Aktuell sind noch keine Spiele im Katalog hinterlegt. Schlage eines mit `/gamevorschlagen` vor!',
+          flags: MessageFlags.Ephemeral
+        });
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎮 Verfügbare Spiele für Lobby-Alerts')
+        .setDescription(
+          'Für folgende Spiele kannst du Lobby-Alerts abonnieren, um bei Mitspieler-Suchen benachrichtigt zu werden:\n\n' +
+          games.map(g => `• **${g.name}** (${g.platform || 'Allgemein'})`).join('\n') +
+          '\n\n💡 *Nutze `/gamevorschlagen`, um weitere Spiele hinzuzufügen!*'
+        )
+        .setColor('#FFA500')
+        .setFooter({ text: '🫵 | the grid. Gaming Katalog' });
+
+      return interaction.reply({ embeds: [embed] });
+    }
+
+    // /gamevorschlagen
+    if (commandName === 'gamevorschlagen') {
+      const gameName = interaction.options.getString('name').trim();
+      const platform = interaction.options.getString('plattform')?.trim() || 'Allgemein';
+      await db.addSuggestion(gameName, platform, interaction.user.id);
+      return interaction.reply({
+        content: `✅ Danke für deinen Vorschlag! **${gameName}** (${platform}) wurde an die Moderatoren zur Prüfung weitergeleitet.`,
+        flags: MessageFlags.Ephemeral
+      });
+    }
+
+    // /games
+    if (commandName === 'games') {
+      const targetUser = interaction.options.getUser('user');
+      if (targetUser && targetUser.id !== interaction.user.id) {
+        const alerts = await db.getUserAlerts(targetUser.id);
+        const list = alerts.length > 0 
+          ? alerts.map(a => `• **${a.gameName}** (${a.platform})`).join('\n')
+          : '*Keine Spiele abonniert.*';
+
+        const embed = new EmbedBuilder()
+          .setTitle(`🎮 Lobby-Alerts von ${targetUser.username}`)
+          .setDescription(`Folgende Spiele hat ${targetUser} abonniert:\n\n${list}`)
+          .setColor('#FFA500')
+          .setThumbnail(targetUser.displayAvatarURL());
+
+        return interaction.reply({ embeds: [embed] });
+      } else {
+        const alerts = await db.getUserAlerts(interaction.user.id);
+        const isNoPing = await db.getUserGlobalNoPing(interaction.user.id);
+
+        const list = alerts.length > 0 
+          ? alerts.map(a => `• **${a.gameName}** (${a.platform})`).join('\n')
+          : '*Du hast noch keine Spiele abonniert. Klicke im Lobbys-Panel auf "Lobby-Alerts" oder nutze `/gameslist`!*';
+
+        const embed = new EmbedBuilder()
+          .setTitle('🎮 Deine abonnierten Spiele')
+          .setDescription(
+            `**Aktuell abonnierte Spiele (${alerts.length}):**\n${list}\n\n` +
+            `**Benachrichtigungs-Modus:** ${isNoPing ? '🔕 **Kein Ping** (Du wirst dem Thread still beigefügt)' : '🔔 **Ping aktiv** (Du erhältst einen Erwähnungs-Ping)'}`
+          )
+          .setColor('#FFA500')
+          .setThumbnail(interaction.user.displayAvatarURL());
+
+        const components = [];
+        if (alerts.length > 0) {
+          const removeOptions = alerts.slice(0, 25).map(a => 
+            new StringSelectMenuOptionBuilder()
+              .setLabel(a.gameName.slice(0, 100))
+              .setValue(a.gameId.toString())
+              .setDescription(`Aus Alerts entfernen`)
+          );
+          const removeMenu = new StringSelectMenuBuilder()
+            .setCustomId('games_select_remove')
+            .setPlaceholder('Spiel entfernen...')
+            .addOptions(removeOptions);
+          components.push(new ActionRowBuilder().addComponents(removeMenu));
+        }
+
+        const toggleBtn = new ButtonBuilder()
+          .setCustomId('lobby_btn_toggle_noping')
+          .setLabel(isNoPing ? 'Pings aktivieren (🔔)' : 'Pings stummschalten (🔕 Kein Ping)')
+          .setStyle(isNoPing ? ButtonStyle.Success : ButtonStyle.Secondary);
+
+        components.push(new ActionRowBuilder().addComponents(toggleBtn));
+
+        return interaction.reply({ embeds: [embed], components, flags: MessageFlags.Ephemeral });
+      }
     }
 
     // /admincreate-selfroles
@@ -483,6 +589,9 @@ client.on('interactionCreate', async (interaction) => {
               '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
               '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
               '`/partner` - Zeigt alle offiziellen Partner von the grid.\n' +
+              '`/gameslist` - Zeigt alle verfügbaren Spiele für Lobby-Alerts an.\n' +
+              '`/games` - Zeigt deine abonnierten Spiele & Einstellungen.\n' +
+              '`/gamevorschlagen` - Schlage ein neues Spiel für den Bot vor.\n' +
               '`/streamer` - Infos für Content Creator & Streamer.'
           }
         )

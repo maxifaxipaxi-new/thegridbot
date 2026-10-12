@@ -1,13 +1,16 @@
 import { ChannelType } from 'discord.js';
+import { db } from './database/database.js';
 
 export function startAutoDeleteScheduler(client) {
-  const CHANNEL_ID = '1519069474559496202';
+  const DEFAULT_CHANNEL_ID = '1519069474559496202';
   const EIGHT_HOURS = 8 * 60 * 60 * 1000;
 
   // Prüfe alle 10 Minuten
   setInterval(async () => {
     try {
-      const channel = await client.channels.fetch(CHANNEL_ID).catch(() => null);
+      const configuredId = await db.getLobbyConfig('lobby_channel_id');
+      const channelId = configuredId || DEFAULT_CHANNEL_ID;
+      const channel = await client.channels.fetch(channelId).catch(() => null);
       if (!channel || channel.type !== ChannelType.GuildText) return;
 
       const now = Date.now();
@@ -27,6 +30,8 @@ export function startAutoDeleteScheduler(client) {
         const toDelete = messages.filter(msg => {
           // Angepinnte Nachrichten nicht löschen
           if (msg.pinned) return false;
+          // Das Lobbys & Mitspieler Control-Panel niemals löschen
+          if (msg.author.id === client.user.id && msg.embeds?.some(e => e.title === '🎮 Lobbys & Mitspieler')) return false;
           // Alter der Nachricht prüfen (älter als 8 Stunden?)
           const age = now - msg.createdTimestamp;
           return age > EIGHT_HOURS;

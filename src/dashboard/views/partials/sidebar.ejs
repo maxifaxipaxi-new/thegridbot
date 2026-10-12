@@ -35,6 +35,11 @@
             <span>Giveaways</span>
         </a>
 
+        <a href="/dashboard/lobbys" class="nav-item <%= locals.currentPath === '/dashboard/lobbys' ? 'active' : '' %>">
+            <i class="fa-solid fa-gamepad"></i>
+            <span>Lobbys & Games</span>
+        </a>
+
         <% if (user.isOwner || user.isAdmin) { %>
             <div style="margin: 16px 16px 8px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">Admin Tools</div>
             <a href="/dashboard/partners" class="nav-item <%= locals.currentPath === '/dashboard/partners' ? 'active' : '' %>" style="border-left: 2px solid #3b82f6; border-radius: 0 8px 8px 0;">

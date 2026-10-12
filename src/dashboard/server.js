@@ -5,7 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
 import { db } from '../database/database.js';
-import { deleteTicketChannel } from '../tickets.js';
+import { deleteTicketChannel, createSupportPanel } from '../tickets.js';
+import { createLobbyPanel, getOrCreateLobbyThread } from '../lobby-system.js';
 import { updateUserXPFromDashboard } from '../leveling.js';
 import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import multer from 'multer';
@@ -291,7 +292,46 @@ export function startDashboard(client) {
   // Ticket Management Routes (Mods/Team)
   app.get('/dashboard/tickets', checkAuth, async (req, res) => {
     const tickets = await db.getTickets();
-    res.render('tickets', { user: req.session.user, tickets });
+    let channels = [];
+    if (client.isReady()) {
+      const guild = client.guilds.cache.get(GUILD_ID);
+      if (guild) {
+        channels = guild.channels.cache
+          .filter(c => c.type === 0 || c.type === 5)
+          .map(c => ({ id: c.id, name: c.name }))
+          .sort((a,b) => a.name.localeCompare(b.name));
+      }
+    }
+    res.render('tickets', { 
+      user: req.session.user, 
+      tickets, 
+      channels,
+      errorMsg: req.query.error,
+      successMsg: req.query.success 
+    });
+  });
+
+  app.post('/dashboard/tickets/post-panel', checkAuth, async (req, res) => {
+    const { channelId } = req.body;
+    if (!channelId) {
+      return res.redirect('/dashboard/tickets?error=Bitte einen gültigen Kanal auswählen');
+    }
+
+    try {
+      const channel = await client.channels.fetch(channelId).catch(() => null);
+      if (!channel || !channel.isTextBased()) {
+        return res.redirect('/dashboard/tickets?error=Kanal nicht gefunden oder nicht beschreibbar');
+      }
+
+      const panelData = createSupportPanel();
+      const sentMsg = await channel.send(panelData);
+      await sentMsg.pin().catch(() => {});
+
+      return res.redirect(`/dashboard/tickets?success=Support-Ticket Panel erfolgreich in #${encodeURIComponent(channel.name)} gesendet & angepinnt!`);
+    } catch (err) {
+      console.error('Fehler beim Senden des Ticket-Panels:', err);
+      return res.redirect(`/dashboard/tickets?error=Fehler beim Senden: ${encodeURIComponent(err.message)}`);
+    }
   });
 
   app.get('/dashboard/tickets/:id', checkAuth, async (req, res) => {
@@ -732,6 +772,154 @@ export function startDashboard(client) {
     } catch (err) {
       console.error('Fehler beim Löschen des Partners:', err);
       res.redirect('/dashboard/partners?error=Fehler beim Löschen');
+    }
+  });
+
+  // --- Lobbys & Games Management (Team & Admins) ---
+  app.get('/dashboard/lobbys', checkAuth, async (req, res) => {
+    try {
+      const games = await db.getAllGames();
+      const suggestions = await db.getAllSuggestions();
+      let channels = [];
+      if (client.isReady()) {
+        const guild = client.guilds.cache.get(GUILD_ID);
+        if (guild) {
+          channels = guild.channels.cache
+            .filter(c => c.type === 0 || c.type === 5)
+            .map(c => ({ id: c.id, name: c.name }))
+            .sort((a,b) => a.name.localeCompare(b.name));
+        }
+      }
+      const currentLobbyChannelId = await db.getLobbyConfig('lobby_channel_id');
+      res.render('lobbys', {
+        user: req.session.user,
+        games,
+        suggestions,
+        channels,
+        currentLobbyChannelId,
+        successMsg: req.query.success,
+        errorMsg: req.query.error
+      });
+    } catch (err) {
+      console.error('Fehler beim Laden der Lobbys & Games:', err);
+      res.redirect('/dashboard?error=Fehler beim Laden');
+    }
+  });
+
+  app.post('/dashboard/lobbys/post-panel', checkAuth, async (req, res) => {
+    const { channelId } = req.body;
+    if (!channelId) {
+      return res.redirect('/dashboard/lobbys?error=Bitte einen gültigen Kanal auswählen');
+    }
+
+    try {
+      const channel = await client.channels.fetch(channelId).catch(() => null);
+      if (!channel || !channel.isTextBased()) {
+        return res.redirect('/dashboard/lobbys?error=Kanal nicht gefunden oder nicht beschreibbar');
+      }
+
+      await db.setLobbyConfig('lobby_channel_id', channelId);
+
+      const panelData = createLobbyPanel();
+      const sentMsg = await channel.send(panelData);
+      await db.setLobbyConfig('lobby_panel_message_id', sentMsg.id);
+
+      // Pinne die Nachricht
+      await sentMsg.pin().catch(() => {});
+
+      // Pin-Systemnachricht sofort entfernen, damit der Kanal absolut sauber bleibt
+      setTimeout(async () => {
+        try {
+          const recentMsgs = await channel.messages.fetch({ limit: 5 });
+          const pinMsg = recentMsgs.find(m => (m.type === 6 || m.system) && m.reference?.messageId === sentMsg.id);
+          if (pinMsg) await pinMsg.delete().catch(() => {});
+        } catch (e) {}
+      }, 1000);
+
+      // Erstelle den Thread direkt auf der Hauptnachricht!
+      await getOrCreateLobbyThread(client, channelId, sentMsg);
+
+      return res.redirect(`/dashboard/lobbys?success=Lobby-Panel erfolgreich in #${encodeURIComponent(channel.name)} gesendet & angepinnt!`);
+    } catch (err) {
+      console.error('Fehler beim Senden des Lobby-Panels:', err);
+      return res.redirect(`/dashboard/lobbys?error=Fehler beim Senden: ${encodeURIComponent(err.message)}`);
+    }
+  });
+
+  app.post('/dashboard/lobbys/games/add', checkAuth, async (req, res) => {
+    let { name, platform } = req.body;
+    if (!name) return res.redirect('/dashboard/lobbys?error=Bitte einen Spielnamen eingeben');
+    name = name.trim();
+    platform = platform ? platform.trim() : 'Allgemein';
+    try {
+      await db.addGame(name, platform, req.session.user.username);
+      res.redirect('/dashboard/lobbys?success=Spiel erfolgreich zum Katalog hinzugefügt');
+    } catch (err) {
+      console.error('Fehler beim Hinzufügen des Spiels:', err);
+      res.redirect('/dashboard/lobbys?error=Spiel existiert bereits oder Fehler beim Speichern');
+    }
+  });
+
+  app.post('/dashboard/lobbys/games/edit', checkAuth, async (req, res) => {
+    let { id, name, platform } = req.body;
+    if (!id || !name) return res.redirect('/dashboard/lobbys?error=Bitte alle Felder ausfüllen');
+    name = name.trim();
+    platform = platform ? platform.trim() : 'Allgemein';
+    try {
+      await db.updateGame(id, name, platform);
+      res.redirect('/dashboard/lobbys?success=Spiel erfolgreich aktualisiert');
+    } catch (err) {
+      console.error('Fehler beim Aktualisieren des Spiels:', err);
+      res.redirect('/dashboard/lobbys?error=Fehler beim Bearbeiten');
+    }
+  });
+
+  app.post('/dashboard/lobbys/games/delete', checkAuth, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.redirect('/dashboard/lobbys?error=Ungültige Anfrage');
+    try {
+      await db.deleteGame(id);
+      res.redirect('/dashboard/lobbys?success=Spiel erfolgreich entfernt');
+    } catch (err) {
+      console.error('Fehler beim Löschen des Spiels:', err);
+      res.redirect('/dashboard/lobbys?error=Fehler beim Löschen');
+    }
+  });
+
+  app.post('/dashboard/lobbys/suggestions/approve', checkAuth, async (req, res) => {
+    const { id, name, platform } = req.body;
+    if (!id || !name) return res.redirect('/dashboard/lobbys?error=Ungültige Anfrage');
+    try {
+      await db.addGame(name.trim(), platform ? platform.trim() : 'Allgemein', 'Community-Vorschlag');
+      await db.updateSuggestionStatus(id, 'approved');
+      res.redirect('/dashboard/lobbys?success=Vorschlag angenommen und Spiel freigeschaltet');
+    } catch (err) {
+      console.error('Fehler beim Annehmen des Vorschlags:', err);
+      res.redirect('/dashboard/lobbys?error=Fehler beim Freischalten');
+    }
+  });
+
+  app.post('/dashboard/lobbys/suggestions/reject', checkAuth, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.redirect('/dashboard/lobbys?error=Ungültige Anfrage');
+    try {
+      await db.updateSuggestionStatus(id, 'rejected');
+      res.redirect('/dashboard/lobbys?success=Vorschlag abgelehnt');
+    } catch (err) {
+      console.error('Fehler beim Ablehnen des Vorschlags:', err);
+      res.redirect('/dashboard/lobbys?error=Fehler beim Ablehnen');
+    }
+  });
+
+  app.post('/dashboard/lobbys/suggestions/delete', checkAuth, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.redirect('/dashboard/lobbys?error=Ungültige Anfrage');
+    try {
+      await db.deleteSuggestion(id);
+      res.redirect('/dashboard/lobbys?success=Vorschlag gelöscht');
+    } catch (err) {
+      console.error('Fehler beim Löschen des Vorschlags:', err);
+      res.redirect('/dashboard/lobbys?error=Fehler beim Löschen');
     }
   });
 

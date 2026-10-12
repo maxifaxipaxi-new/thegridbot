@@ -111,6 +111,64 @@ class Database {
         link TEXT NOT NULL,
         createdAt INTEGER
       );
+
+      CREATE TABLE IF NOT EXISTS games (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        platform TEXT,
+        addedBy TEXT,
+        createdAt INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS game_suggestions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        platform TEXT,
+        userId TEXT,
+        status TEXT DEFAULT 'pending',
+        createdAt INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS user_lobby_alerts (
+        userId TEXT,
+        gameId INTEGER,
+        noPing INTEGER DEFAULT 0,
+        createdAt INTEGER,
+        PRIMARY KEY (userId, gameId)
+      );
+
+      CREATE TABLE IF NOT EXISTS lobby_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        messageId TEXT UNIQUE,
+        channelId TEXT,
+        threadId TEXT,
+        userId TEXT,
+        gameName TEXT,
+        code TEXT,
+        note TEXT,
+        createdAt INTEGER,
+        expiresAt INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS lfg_threads (
+        threadId TEXT PRIMARY KEY,
+        channelId TEXT,
+        creatorId TEXT,
+        gameName TEXT,
+        createdAt INTEGER,
+        expiresAt INTEGER,
+        status TEXT DEFAULT 'active'
+      );
+
+      CREATE TABLE IF NOT EXISTS lfg_cooldowns (
+        userId TEXT PRIMARY KEY,
+        lastUsed INTEGER
+      );
+
+      CREATE TABLE IF NOT EXISTS lobby_config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
     `);
 
     try {
@@ -549,6 +607,192 @@ class Database {
   async deletePartner(id) {
     const db = await this.dbPromise;
     await db.run('DELETE FROM partners WHERE id = ?', [id]);
+  }
+
+  // --- Games & Lobbys ---
+  async getAllGames() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM games ORDER BY name ASC');
+  }
+
+  async getGame(id) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM games WHERE id = ?', [id]);
+  }
+
+  async getGameByName(name) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM games WHERE LOWER(name) = LOWER(?)', [name]);
+  }
+
+  async addGame(name, platform, addedBy) {
+    const db = await this.dbPromise;
+    const result = await db.run(
+      'INSERT INTO games (name, platform, addedBy, createdAt) VALUES (?, ?, ?, ?)',
+      [name, platform || 'Allgemein', addedBy || 'System', Date.now()]
+    );
+    return result.lastID;
+  }
+
+  async updateGame(id, name, platform) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE games SET name = ?, platform = ? WHERE id = ?', [name, platform, id]);
+  }
+
+  async deleteGame(id) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM games WHERE id = ?', [id]);
+    await db.run('DELETE FROM user_lobby_alerts WHERE gameId = ?', [id]);
+  }
+
+  // --- Game Suggestions ---
+  async getAllSuggestions() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM game_suggestions ORDER BY createdAt DESC');
+  }
+
+  async getPendingSuggestions() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM game_suggestions WHERE status = "pending" ORDER BY createdAt DESC');
+  }
+
+  async addSuggestion(name, platform, userId) {
+    const db = await this.dbPromise;
+    const result = await db.run(
+      'INSERT INTO game_suggestions (name, platform, userId, status, createdAt) VALUES (?, ?, ?, "pending", ?)',
+      [name, platform || 'Allgemein', userId, Date.now()]
+    );
+    return result.lastID;
+  }
+
+  async updateSuggestionStatus(id, status) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE game_suggestions SET status = ? WHERE id = ?', [status, id]);
+  }
+
+  async deleteSuggestion(id) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM game_suggestions WHERE id = ?', [id]);
+  }
+
+  // --- User Lobby Alerts ---
+  async getUserAlerts(userId) {
+    const db = await this.dbPromise;
+    return await db.all(
+      `SELECT ula.gameId, ula.noPing, g.name as gameName, g.platform 
+       FROM user_lobby_alerts ula 
+       JOIN games g ON ula.gameId = g.id 
+       WHERE ula.userId = ? 
+       ORDER BY g.name ASC`,
+      [userId]
+    );
+  }
+
+  async hasUserAlert(userId, gameId) {
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT 1 FROM user_lobby_alerts WHERE userId = ? AND gameId = ?', [userId, gameId]);
+    return !!row;
+  }
+
+  async addUserAlert(userId, gameId, noPing = 0) {
+    const db = await this.dbPromise;
+    await db.run(
+      'INSERT OR REPLACE INTO user_lobby_alerts (userId, gameId, noPing, createdAt) VALUES (?, ?, ?, ?)',
+      [userId, gameId, noPing ? 1 : 0, Date.now()]
+    );
+  }
+
+  async removeUserAlert(userId, gameId) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM user_lobby_alerts WHERE userId = ? AND gameId = ?', [userId, gameId]);
+  }
+
+  async setUserAlertNoPing(userId, noPing) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE user_lobby_alerts SET noPing = ? WHERE userId = ?', [noPing ? 1 : 0, userId]);
+  }
+
+  async getUserGlobalNoPing(userId) {
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT noPing FROM user_lobby_alerts WHERE userId = ? LIMIT 1', [userId]);
+    return row ? row.noPing === 1 : false;
+  }
+
+  async getUsersForGame(gameId) {
+    const db = await this.dbPromise;
+    return await db.all('SELECT userId, noPing FROM user_lobby_alerts WHERE gameId = ?', [gameId]);
+  }
+
+  // --- Lobby Codes ---
+  async addLobbyCode(messageId, channelId, threadId, userId, gameName, code, note, expiresAt) {
+    const db = await this.dbPromise;
+    await db.run(
+      `INSERT INTO lobby_codes (messageId, channelId, threadId, userId, gameName, code, note, createdAt, expiresAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [messageId, channelId, threadId, userId, gameName, code, note || '', Date.now(), expiresAt]
+    );
+  }
+
+  async getExpiredLobbyCodes(now = Date.now()) {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM lobby_codes WHERE expiresAt <= ?', [now]);
+  }
+
+  async deleteLobbyCode(messageId) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM lobby_codes WHERE messageId = ?', [messageId]);
+  }
+
+  // --- LFG Threads ---
+  async addLfgThread(threadId, channelId, creatorId, gameName, expiresAt) {
+    const db = await this.dbPromise;
+    await db.run(
+      `INSERT INTO lfg_threads (threadId, channelId, creatorId, gameName, createdAt, expiresAt, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'active')`,
+      [threadId, channelId, creatorId, gameName, Date.now(), expiresAt]
+    );
+  }
+
+  async getLfgThread(threadId) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM lfg_threads WHERE threadId = ?', [threadId]);
+  }
+
+  async closeLfgThread(threadId) {
+    const db = await this.dbPromise;
+    await db.run('UPDATE lfg_threads SET status = "closed" WHERE threadId = ?', [threadId]);
+  }
+
+  async getExpiredLfgThreads(now = Date.now()) {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM lfg_threads WHERE expiresAt <= ? AND status = "active"', [now]);
+  }
+
+  // --- LFG Cooldowns ---
+  async getLfgCooldown(userId) {
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT lastUsed FROM lfg_cooldowns WHERE userId = ?', [userId]);
+    return row ? row.lastUsed : 0;
+  }
+
+  async setLfgCooldown(userId, timestamp = Date.now()) {
+    const db = await this.dbPromise;
+    await db.run(
+      'INSERT OR REPLACE INTO lfg_cooldowns (userId, lastUsed) VALUES (?, ?)',
+      [userId, timestamp]
+    );
+  }
+
+  // --- Lobby Config ---
+  async getLobbyConfig(key) {
+    const db = await this.dbPromise;
+    const row = await db.get('SELECT value FROM lobby_config WHERE key = ?', [key]);
+    return row ? row.value : null;
+  }
+
+  async setLobbyConfig(key, value) {
+    const db = await this.dbPromise;
+    await db.run('INSERT OR REPLACE INTO lobby_config (key, value) VALUES (?, ?)', [key, value]);
   }
 }
 

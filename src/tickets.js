@@ -7,13 +7,7 @@ const TEAM_ROLE_ID = process.env.TEAM_ROLE_ID || '1294670974020616294';
 const CATEGORY_ID = '1294671725606473729';
 const TRANSCRIPT_CHANNEL_ID = '1387355992236363867';
 
-export async function handleTicketSetup(interaction) {
-  const member = interaction.member;
-  const hasRole = member.roles.cache.has(TEAM_ROLE_ID);
-  if (!hasRole && interaction.user.id !== process.env.OWNER_ID) {
-    return interaction.reply({ content: '❌ Keine Berechtigung.', flags: MessageFlags.Ephemeral });
-  }
-
+export function createSupportPanel() {
   const embed = new EmbedBuilder()
     .setTitle('🎫 Support Ticket')
     .setDescription('Klicke auf den Button unten, um ein privates Ticket zu erstellen. Unser Team wird sich schnellstmöglich um dein Anliegen kümmern.')
@@ -29,7 +23,18 @@ export async function handleTicketSetup(interaction) {
         .setEmoji('🎫')
     );
 
-  await interaction.channel.send({ embeds: [embed], components: [row] });
+  return { embeds: [embed], components: [row] };
+}
+
+export async function handleTicketSetup(interaction) {
+  const member = interaction.member;
+  const hasRole = member.roles.cache.has(TEAM_ROLE_ID);
+  if (!hasRole && interaction.user.id !== process.env.OWNER_ID) {
+    return interaction.reply({ content: '❌ Keine Berechtigung.', flags: MessageFlags.Ephemeral });
+  }
+
+  const panelData = createSupportPanel();
+  await interaction.channel.send(panelData);
   await interaction.reply({ content: '✅ Ticket-Panel erfolgreich erstellt.', flags: MessageFlags.Ephemeral });
 }
 
