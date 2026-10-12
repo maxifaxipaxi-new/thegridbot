@@ -7,7 +7,7 @@ import fs from 'node:fs/promises';
 import { db } from '../database/database.js';
 import { deleteTicketChannel } from '../tickets.js';
 import { updateUserXPFromDashboard } from '../leveling.js';
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import multer from 'multer';
 import { startRadio, stopRadio } from '../radio.js';
 
@@ -62,6 +62,13 @@ export function startDashboard(client) {
 
   const checkOwner = (req, res, next) => {
     if (req.session.user && req.session.user.isOwner) {
+      return next();
+    }
+    res.redirect('/error');
+  };
+
+  const checkAdmin = (req, res, next) => {
+    if (req.session.user && (req.session.user.isOwner || req.session.user.isAdmin)) {
       return next();
     }
     res.redirect('/error');
@@ -151,9 +158,10 @@ export function startDashboard(client) {
       });
       const userData = userResponse.data;
 
-      // Verify role in the specific guild using Bot API (works even if bot is offline)
+      // Verify role and permissions in the specific guild using Bot API
       let isTeam = false;
       let isOwner = (userData.id === OWNER_ID);
+      let isAdmin = isOwner;
 
       try {
         const guildMemberResponse = await axios.get(`https://discord.com/api/guilds/${GUILD_ID}/members/${userData.id}`, {
@@ -167,10 +175,23 @@ export function startDashboard(client) {
         console.error('Error fetching guild member (User might not be in the server or Bot lacks permissions):', err.response?.status);
       }
 
-      // Allow access if owner or has the team role
-      if (isOwner || isTeam) {
+      if (client.isReady()) {
+        try {
+          const guild = client.guilds.cache.get(GUILD_ID);
+          if (guild) {
+            const member = await guild.members.fetch(userData.id).catch(() => null);
+            if (member && member.permissions.has(PermissionFlagsBits.Administrator)) {
+              isAdmin = true;
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Allow access if owner, admin or has the team role
+      if (isOwner || isTeam || isAdmin) {
         userData.isOwner = isOwner;
         userData.isTeam = isTeam;
+        userData.isAdmin = isAdmin;
         req.session.user = userData;
         res.redirect('/dashboard');
       } else {
@@ -312,7 +333,7 @@ export function startDashboard(client) {
           .setColor('#FFA500')
           .setFooter({ 
             text: `🫵 | the grid. | Geantwortet von: ${req.session.user.username}`, 
-            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+            iconURL: 'https://my.thegridcom.org/public/logo.png'
           });
         
         await channel.send({ embeds: [embed] }).catch(err => console.error('Fehler beim Senden in Ticket:', err));
@@ -631,6 +652,86 @@ export function startDashboard(client) {
     } catch(err) {
       console.error('Fehler beim Aktualisieren der XP:', err);
       res.redirect('/dashboard/xp?error=Fehler beim Aktualisieren');
+    }
+  });
+
+  app.post('/dashboard/xp/delete', checkAuth, async (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.redirect('/dashboard/xp?error=Keine User ID angegeben');
+    try {
+      await db.deleteUser(userId);
+      res.redirect('/dashboard/xp?success=User erfolgreich aus der XP-Rangliste gelöscht');
+    } catch(err) {
+      console.error('Fehler beim Löschen des Users aus XP:', err);
+      res.redirect('/dashboard/xp?error=Fehler beim Löschen');
+    }
+  });
+
+  // Partner Management Routes (Admin Only)
+  app.get('/dashboard/partners', checkAdmin, async (req, res) => {
+    try {
+      const partners = await db.getPartners();
+      res.render('partners', {
+        user: req.session.user,
+        partners,
+        successMsg: req.query.success,
+        errorMsg: req.query.error
+      });
+    } catch (err) {
+      console.error('Fehler beim Laden der Partner:', err);
+      res.redirect('/dashboard?error=Fehler beim Laden der Partner');
+    }
+  });
+
+  app.post('/dashboard/partners/add', checkAdmin, async (req, res) => {
+    let { name, description, link } = req.body;
+    if (!name || !description || !link) {
+      return res.redirect('/dashboard/partners?error=Bitte alle Pflichtfelder ausfüllen');
+    }
+    name = name.trim();
+    description = description.trim();
+    link = link.trim();
+    if (!link.startsWith('http://') && !link.startsWith('https://')) {
+      link = 'https://' + link;
+    }
+    try {
+      await db.addPartner(name, description, link);
+      res.redirect('/dashboard/partners?success=Partner erfolgreich hinzugefügt');
+    } catch (err) {
+      console.error('Fehler beim Hinzufügen des Partners:', err);
+      res.redirect('/dashboard/partners?error=Fehler beim Speichern');
+    }
+  });
+
+  app.post('/dashboard/partners/edit', checkAdmin, async (req, res) => {
+    let { id, name, description, link } = req.body;
+    if (!id || !name || !description || !link) {
+      return res.redirect('/dashboard/partners?error=Bitte alle Pflichtfelder ausfüllen');
+    }
+    name = name.trim();
+    description = description.trim();
+    link = link.trim();
+    if (!link.startsWith('http://') && !link.startsWith('https://')) {
+      link = 'https://' + link;
+    }
+    try {
+      await db.updatePartner(id, name, description, link);
+      res.redirect('/dashboard/partners?success=Partner erfolgreich aktualisiert');
+    } catch (err) {
+      console.error('Fehler beim Aktualisieren des Partners:', err);
+      res.redirect('/dashboard/partners?error=Fehler beim Bearbeiten');
+    }
+  });
+
+  app.post('/dashboard/partners/delete', checkAdmin, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.redirect('/dashboard/partners?error=Ungültige Anfrage');
+    try {
+      await db.deletePartner(id);
+      res.redirect('/dashboard/partners?success=Partner erfolgreich gelöscht');
+    } catch (err) {
+      console.error('Fehler beim Löschen des Partners:', err);
+      res.redirect('/dashboard/partners?error=Fehler beim Löschen');
     }
   });
 

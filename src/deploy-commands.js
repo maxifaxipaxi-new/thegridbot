@@ -56,7 +56,7 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName('partner')
-    .setDescription('Erfahre mehr über unseren stolzen Partner: Frogly Studios!'),
+    .setDescription('Erfahre mehr über unsere offiziellen Partner & Kooperationen!'),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {

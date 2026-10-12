@@ -166,7 +166,7 @@ export async function checkLevelUp(client, guild, member, user) {
          .setTitle(levelTitle)
          .setDescription(levelDesc)
          .setColor('#f97316')
-         .setThumbnail('https://my.thegridcom.xyz/public/logo.png');
+         .setThumbnail('https://my.thegridcom.org/public/logo.png');
        await member.send({ embeds: [embed] }).catch(() => {});
     } catch(e) {}
   } else if (newLevel < (user.level || 0)) {

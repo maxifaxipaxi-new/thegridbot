@@ -37,7 +37,7 @@
                         <ul style="list-style: none; font-size: 14px; color: var(--text-muted);">
                             <li style="margin-bottom: 8px;"><i class="fa-solid fa-check" style="color: var(--accent-color); margin-right: 8px;"></i> <b>Textnachrichten:</b> 5 - 10 XP pro Nachricht (1 Minute Cooldown).</li>
                             <li style="margin-bottom: 8px;"><i class="fa-solid fa-check" style="color: var(--accent-color); margin-right: 8px;"></i> <b>Voice-Chat:</b> 1 XP pro Minute (min. 2 Personen, max. 60 XP pro Tag).</li>
-                            <li><i class="fa-solid fa-minus" style="color: var(--danger); margin-right: 8px;"></i> <b>Inaktivität:</b> Nach 3 Tagen Inaktivität werden täglich 10 XP abgezogen.</li>
+                            <li><i class="fa-solid fa-user-xmark" style="color: var(--accent-color); margin-right: 8px;"></i> <b>Server-Leaves:</b> User, die den Server verlassen, werden automatisch aus der Rangliste gelöscht.</li>
                         </ul>
                     </div>
                     <div>
@@ -96,11 +96,19 @@
                                                 <% } %>
                                             </td>
                                             <td style="padding: 16px; text-align: right;">
-                                                <form action="/dashboard/xp/edit" method="POST" style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
-                                                    <input type="hidden" name="userId" value="<%= u.id %>">
-                                                    <input type="number" name="newXp" value="<%= u.xp %>" style="width: 100px; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: white; outline: none;">
-                                                    <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Speichern</button>
-                                                </form>
+                                                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center;">
+                                                    <form action="/dashboard/xp/edit" method="POST" style="display: flex; gap: 8px; align-items: center;">
+                                                        <input type="hidden" name="userId" value="<%= u.id %>">
+                                                        <input type="number" name="newXp" value="<%= u.xp %>" style="width: 100px; padding: 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: white; outline: none;">
+                                                        <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Speichern</button>
+                                                    </form>
+                                                    <form action="/dashboard/xp/delete" method="POST" onsubmit="return confirm('Möchtest du diesen User wirklich aus der XP-Rangliste löschen?');" style="display: inline;">
+                                                        <input type="hidden" name="userId" value="<%= u.id %>">
+                                                        <button type="submit" class="btn btn-danger" style="padding: 8px 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: #f87171; border-radius: 8px; cursor: pointer;" title="Aus Rangliste löschen">
+                                                            <i class="fa-solid fa-trash"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     <% }) %>

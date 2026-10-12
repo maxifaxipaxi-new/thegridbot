@@ -18,7 +18,7 @@ export async function handleTicketSetup(interaction) {
     .setTitle('🎫 Support Ticket')
     .setDescription('Klicke auf den Button unten, um ein privates Ticket zu erstellen. Unser Team wird sich schnellstmöglich um dein Anliegen kümmern.')
     .setColor('#FFA500')
-    .setFooter({ text: '🫵 | the grid.', iconURL: 'https://my.thegridcom.xyz/public/logo.png' });
+    .setFooter({ text: '🫵 | the grid.', iconURL: 'https://my.thegridcom.org/public/logo.png' });
 
   const row = new ActionRowBuilder()
     .addComponents(
@@ -109,7 +109,7 @@ export async function handleTicketButton(interaction) {
         .setTitle('🎫 Ticket eröffnet')
         .setDescription(`Willkommen im Support, ${user}! Bitte beschreibe dein Anliegen.\nEin Team-Mitglied wird dir bald antworten.`)
         .setColor('#FFA500')
-        .setFooter({ text: '🫵 | the grid.', iconURL: 'https://my.thegridcom.xyz/public/logo.png' });
+        .setFooter({ text: '🫵 | the grid.', iconURL: 'https://my.thegridcom.org/public/logo.png' });
 
       const row = new ActionRowBuilder()
         .addComponents(

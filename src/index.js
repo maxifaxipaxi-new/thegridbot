@@ -136,7 +136,7 @@ client.on('messageCreate', async (message) => {
       .setTimestamp()
       .setFooter({
         text: '🫵 | the grid.',
-        iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+        iconURL: 'https://my.thegridcom.org/public/logo.png'
       });
 
     await message.channel.send({ embeds: [embed] }).catch(err => {
@@ -148,6 +148,19 @@ client.on('messageCreate', async (message) => {
 // Event-Handler für Voice-State-Änderungen (für Warteraum)
 client.on('voiceStateUpdate', (oldState, newState) => {
   handleWaitingRoomJoin(oldState, newState);
+});
+
+// Event-Handler wenn ein User den Server verlässt: aus XP-Ranking löschen
+client.on('guildMemberRemove', async (member) => {
+  try {
+    const userId = member.id || member.user?.id;
+    if (userId) {
+      await db.deleteUser(userId);
+      console.log(`[XP] User ${userId} (${member.user?.tag || member.displayName || 'Unbekannt'}) hat den Server verlassen und wurde aus der XP-Rangliste gelöscht.`);
+    }
+  } catch (error) {
+    console.error(`Fehler beim Löschen des Users ${member.id} aus der XP-Rangliste:`, error);
+  }
 });
 
 // Event-Handler für Slash-Commands und Buttons
@@ -383,24 +396,53 @@ client.on('interactionCreate', async (interaction) => {
 
     // /partner
     if (commandName === 'partner') {
-      const embed = new EmbedBuilder()
-        .setTitle('🤝 the grid. Partner: Frogly Studios')
-        .setDescription(
-          'Wir sind unglaublich stolz darauf, offizieller Partner von **Frogly Studios** zu sein!\n\n' +
-          'Frogly Studios ist ein innovatives Game- und Softwarestudio, welches durch seinen erstklassigen Support ' +
-          'die Entwicklung und den Betrieb dieses Bots (the grid.) maßgeblich ermöglicht.\n\n' +
-          '**Erster Release auf Steam!** 🎉\n' +
-          'Schau dir unbedingt ihre erste eigene Software auf Steam an und unterstütze sie:\n' +
-          '🔗 **[frogly.fun](https://frogly.fun)**\n\n' +
-          '*Vielen Dank an Frogly Studios für die großartige Zusammenarbeit!*'
-        )
-        .setColor('#FFA500')
-        .setImage('https://my.thegridcom.xyz/public/logo.png') // or maybe leave out or use standard thumbnail
-        .setThumbnail('https://my.thegridcom.xyz/public/logo.png')
-        .setTimestamp()
-        .setFooter({ text: 'the grid. x Frogly Studios' });
+      const partners = await db.getPartners();
 
-      await interaction.reply({ embeds: [embed] });
+      const embed = new EmbedBuilder()
+        .setTitle('🤝 Offizielle Partner von the grid.')
+        .setColor('#FFA500')
+        .setThumbnail('https://my.thegridcom.org/public/logo.png')
+        .setTimestamp()
+        .setFooter({
+          text: '🫵 | the grid. Partner-Netzwerk',
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
+        });
+
+      if (!partners || partners.length === 0) {
+        embed.setDescription('Aktuell sind keine offiziellen Partner eingetragen.\n\nDu möchtest Partner werden? Kontaktiere unser Team gerne per Ticket!');
+        await interaction.reply({ embeds: [embed] });
+        return;
+      }
+
+      embed.setDescription(
+        'Wir freuen uns sehr über die Zusammenarbeit mit unseren offiziellen Partnern!\n' +
+        'Hier findest du eine Übersicht über alle Partner und ihre Projekte:\n\n' +
+        partners.map(p => {
+          return `### 🤝 ${p.name}\n${p.description}\n🔗 **Website / Link:** [${p.link}](${p.link})`;
+        }).join('\n\n───────────────\n\n')
+      );
+
+      const components = [];
+      let currentRow = new ActionRowBuilder();
+      for (const p of partners) {
+        if (p.link && (p.link.startsWith('http://') || p.link.startsWith('https://'))) {
+          currentRow.addComponents(
+            new ButtonBuilder()
+              .setLabel(p.name.length > 80 ? p.name.substring(0, 77) + '...' : p.name)
+              .setStyle(ButtonStyle.Link)
+              .setURL(p.link)
+          );
+          if (currentRow.components.length === 5) {
+            components.push(currentRow);
+            currentRow = new ActionRowBuilder();
+          }
+        }
+      }
+      if (currentRow.components.length > 0 && components.length < 5) {
+        components.push(currentRow);
+      }
+
+      await interaction.reply({ embeds: [embed], components });
       return;
     }
 
@@ -418,7 +460,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({
           text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
@@ -435,6 +477,7 @@ client.on('interactionCreate', async (interaction) => {
             value: '`/help` - Zeigt diese Hilfe-Übersicht.\n' +
               '`/support` - Zeigt Support-Kontaktinfos (nur für dich sichtbar).\n' +
               '`/regeln` - Zeigt einen wichtigen Hinweis zu den Regeln.\n' +
+              '`/partner` - Zeigt alle offiziellen Partner von the grid.\n' +
               '`/streamer` - Infos für Content Creator & Streamer.'
           }
         )
@@ -442,7 +485,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({
           text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -464,7 +507,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({
           text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -482,7 +525,7 @@ client.on('interactionCreate', async (interaction) => {
         .setTimestamp()
         .setFooter({
           text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -495,7 +538,7 @@ client.on('interactionCreate', async (interaction) => {
 
       if (hasRole) {
         await interaction.reply({
-          content: 'Hier geht es zum Dashboard: https://my.thegridcom.xyz/dashboard/',
+          content: 'Hier geht es zum Dashboard: https://my.thegridcom.org/dashboard/',
           flags: MessageFlags.Ephemeral
         });
       } else {
@@ -553,7 +596,7 @@ client.on('interactionCreate', async (interaction) => {
           .setThumbnail(interaction.user.displayAvatarURL())
           .setFooter({
             text: '🫵 | the grid.',
-            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+            iconURL: 'https://my.thegridcom.org/public/logo.png'
           });
 
         await interaction.reply({ embeds: [embed] });
@@ -568,7 +611,7 @@ client.on('interactionCreate', async (interaction) => {
           .setColor('#ef4444')
           .setFooter({
             text: '🫵 | the grid.',
-            iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+            iconURL: 'https://my.thegridcom.org/public/logo.png'
           });
 
         await interaction.reply({ embeds: [embed] });
@@ -619,12 +662,12 @@ client.on('interactionCreate', async (interaction) => {
 
       const embed = new EmbedBuilder()
         .setTitle(`XP Profil von ${interaction.user.username}`)
-        .setDescription(`**Aktuelles Level:** ${currentRole}\n**Nächstes Level:** ${nextLevelText}\n\n**Erfahrungspunkte:** ${xp} XP\n**Server Rank:** #${rank}\n\n**Fortschritt zum nächsten Level:**\n${progressBar}${bonusText}\n\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)`)
+        .setDescription(`**Aktuelles Level:** ${currentRole}\n**Nächstes Level:** ${nextLevelText}\n\n**Erfahrungspunkte:** ${xp} XP\n**Server Rank:** #${rank}\n\n**Fortschritt zum nächsten Level:**\n${progressBar}${bonusText}\n\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.org/leaderboard)`)
         .setColor('#FFA500')
         .setThumbnail(interaction.user.displayAvatarURL())
         .setFooter({
           text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });
@@ -646,7 +689,7 @@ client.on('interactionCreate', async (interaction) => {
 
       if (description === '') description = 'Noch keine XP verteilt!\n';
 
-      description += '\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.xyz/leaderboard)';
+      description += '\n[Für das öffentliche Leaderboard besuche unser Web-Dashboard!](https://my.thegridcom.org/leaderboard)';
 
       const embed = new EmbedBuilder()
         .setTitle('🏆 XP Leaderboard (Top 10)')
@@ -654,7 +697,7 @@ client.on('interactionCreate', async (interaction) => {
         .setColor('#FFA500')
         .setFooter({
           text: '🫵 | the grid.',
-          iconURL: 'https://my.thegridcom.xyz/public/logo.png'
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
         });
 
       await interaction.reply({ embeds: [embed] });

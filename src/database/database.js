@@ -103,6 +103,14 @@ class Database {
         createdAt INTEGER,
         status TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS partners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        link TEXT NOT NULL,
+        createdAt INTEGER
+      );
     `);
 
     try {
@@ -129,6 +137,21 @@ class Database {
 
     try {
       await db.exec('ALTER TABLE announcements_twitch ADD COLUMN discordUserId TEXT');
+    } catch (err) {}
+
+    try {
+      const partnerCount = await db.get('SELECT COUNT(*) as count FROM partners');
+      if (partnerCount && partnerCount.count === 0) {
+        await db.run(
+          `INSERT INTO partners (name, description, link, createdAt) VALUES (?, ?, ?, ?)`,
+          [
+            'Frogly Studios',
+            'Frogly Studios ist ein innovatives Game- und Softwarestudio, welches durch seinen erstklassigen Support die Entwicklung und den Betrieb dieses Bots (the grid.) maßgeblich ermöglicht.',
+            'https://frogly.fun',
+            Date.now()
+          ]
+        );
+      }
     } catch (err) {}
 
     return db;
@@ -342,6 +365,11 @@ class Database {
     `, [userId, userData.xp, userData.level, userData.lastMessageTimestamp, userData.dailyVoicePoints, userData.dailyVoiceReset, userData.hasBonus || 0, userData.lastWeeklyTimestamp || 0, userData.lastPenaltyTimestamp || 0]);
   }
 
+  async deleteUser(userId) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM users WHERE id = ?', [userId]);
+  }
+
   async getAllUsers() {
     const db = await this.dbPromise;
     const rows = await db.all('SELECT * FROM users');
@@ -488,6 +516,39 @@ class Database {
     const db = await this.dbPromise;
     await db.run('DELETE FROM giveaways WHERE id = ?', [id]);
     await db.run('DELETE FROM giveaway_entries WHERE giveawayId = ?', [id]);
+  }
+
+  // --- Partners ---
+  async getPartners() {
+    const db = await this.dbPromise;
+    return await db.all('SELECT * FROM partners ORDER BY id ASC');
+  }
+
+  async getPartner(id) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM partners WHERE id = ?', [id]);
+  }
+
+  async addPartner(name, description, link) {
+    const db = await this.dbPromise;
+    const result = await db.run(
+      'INSERT INTO partners (name, description, link, createdAt) VALUES (?, ?, ?, ?)',
+      [name, description, link, Date.now()]
+    );
+    return result.lastID;
+  }
+
+  async updatePartner(id, name, description, link) {
+    const db = await this.dbPromise;
+    await db.run(
+      'UPDATE partners SET name = ?, description = ?, link = ? WHERE id = ?',
+      [name, description, link, id]
+    );
+  }
+
+  async deletePartner(id) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM partners WHERE id = ?', [id]);
   }
 }
 

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Partner Verwaltung - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/dashboard/partners' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div>
+                <h1 class="page-title">🤝 Partner Verwaltung</h1>
+                <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">Verwalte Partner & Sponsoren für den <code>/partner</code> Discord-Befehl</p>
+            </div>
+        </div>
+
+        <main class="main-content">
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error" style="margin-bottom: 24px; padding: 16px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 12px; color: #f8fafc;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-right: 8px;"></i> <%= errorMsg %>
+                </div>
+            <% } %>
+
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success" style="margin-bottom: 24px; padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 12px; color: #f8fafc;">
+                    <i class="fa-solid fa-check-circle" style="color: var(--success); margin-right: 8px;"></i> <%= successMsg %>
+                </div>
+            <% } %>
+
+            <!-- Neuer Partner hinzufügen -->
+            <div class="dashboard-card" style="margin-bottom: 32px;">
+                <h3 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-plus-circle" style="color: var(--accent-color);"></i>
+                    Neuen Partner hinzufügen
+                </h3>
+                <form action="/dashboard/partners/add" method="POST">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="add-name" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Partner Name *</label>
+                            <input type="text" id="add-name" name="name" class="form-control" placeholder="z. B. Frogly Studios" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="add-link" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Webseite / Link *</label>
+                            <input type="text" id="add-link" name="link" class="form-control" placeholder="https://..." required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="add-description" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Beschreibung *</label>
+                        <textarea id="add-description" name="description" class="form-control" rows="3" placeholder="Kurze Vorstellung des Partners für das Discord-Embed..." required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Partner speichern
+                    </button>
+                </form>
+            </div>
+
+            <!-- Liste der aktuellen Partner -->
+            <div class="dashboard-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3>
+                        <i class="fa-solid fa-list" style="color: var(--accent-color); margin-right: 8px;"></i>
+                        Aktuelle Partner (<%= partners.length %>)
+                    </h3>
+                    <span style="font-size: 13px; color: var(--text-muted);">
+                        Werden gemeinsam im <code>/partner</code> Embed dargestellt
+                    </span>
+                </div>
+
+                <div class="table-container">
+                    <table class="table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-muted); font-size: 13px; text-transform: uppercase;">
+                                <th style="padding: 12px 16px; text-align: left;">Name</th>
+                                <th style="padding: 12px 16px; text-align: left;">Beschreibung</th>
+                                <th style="padding: 12px 16px; text-align: left;">Link</th>
+                                <th style="padding: 12px 16px; text-align: right;">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (partners && partners.length > 0) { %>
+                                <% partners.forEach(p => { %>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" id="partner-row-<%= p.id %>">
+                                        <td style="padding: 16px; font-weight: 600; vertical-align: top; white-space: nowrap;">
+                                            🤝 <%= p.name %>
+                                        </td>
+                                        <td style="padding: 16px; color: var(--text-muted); font-size: 14px; vertical-align: top; max-width: 400px; line-height: 1.5;">
+                                            <%= p.description %>
+                                        </td>
+                                        <td style="padding: 16px; vertical-align: top; white-space: nowrap;">
+                                            <a href="<%= p.link %>" target="_blank" rel="noopener noreferrer" style="color: #38bdf8; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 12px;"></i> <%= p.link %>
+                                            </a>
+                                        </td>
+                                        <td style="padding: 16px; text-align: right; vertical-align: top; white-space: nowrap;">
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                <button type="button" class="btn btn-secondary" onclick="openEditModal(<%= p.id %>, <%= JSON.stringify(p.name) %>, <%= JSON.stringify(p.description) %>, <%= JSON.stringify(p.link) %>)" style="padding: 8px 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); border-radius: 8px; color: white; cursor: pointer;">
+                                                    <i class="fa-solid fa-pen-to-square"></i> Bearbeiten
+                                                </button>
+                                                <form action="/dashboard/partners/delete" method="POST" onsubmit="return confirm('Möchtest du den Partner wirklich löschen?');" style="display: inline;">
+                                                    <input type="hidden" name="id" value="<%= p.id %>">
+                                                    <button type="submit" class="btn btn-danger" style="padding: 8px 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: #f87171; border-radius: 8px; cursor: pointer;" title="Löschen">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        Keine Partner eingetragen. Füge oben einen neuen Partner hinzu!
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        <%- include('partials/footer') %>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+        <div style="background: #1e293b; border: 1px solid var(--glass-border); border-radius: 16px; padding: 24px; max-width: 550px; width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 18px; color: white;"><i class="fa-solid fa-pen-to-square" style="color: var(--accent-color); margin-right: 8px;"></i> Partner bearbeiten</h3>
+                <button type="button" onclick="closeEditModal()" style="background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <form action="/dashboard/partners/edit" method="POST">
+                <input type="hidden" id="edit-id" name="id">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" for="edit-name" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Partner Name *</label>
+                    <input type="text" id="edit-name" name="name" class="form-control" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" for="edit-link" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Webseite / Link *</label>
+                    <input type="text" id="edit-link" name="link" class="form-control" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label" for="edit-description" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Beschreibung *</label>
+                    <textarea id="edit-description" name="description" class="form-control" rows="4" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white; resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditModal()" style="padding: 10px 20px; border: 1px solid var(--glass-border); background: transparent; color: white; border-radius: 8px; cursor: pointer;">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 20px; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-check"></i> Änderungen speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditModal(id, name, description, link) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-name').value = name;
+            document.getElementById('edit-description').value = description;
+            document.getElementById('edit-link').value = link;
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        };
+    </script>
+</body>
+</html>

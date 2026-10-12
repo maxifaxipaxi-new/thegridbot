@@ -35,20 +35,26 @@
             <span>Giveaways</span>
         </a>
 
-        <% if (user.isOwner) { %>
+        <% if (user.isOwner || user.isAdmin) { %>
             <div style="margin: 16px 16px 8px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">Admin Tools</div>
-            <a href="/dashboard/db" class="nav-item <%= locals.currentPath === '/dashboard/db' ? 'active' : '' %>" style="border-left: 2px solid var(--danger); border-radius: 0 8px 8px 0;">
-                <i class="fa-solid fa-database" style="color: var(--danger);"></i>
-                <span>Datenbank Editor</span>
+            <a href="/dashboard/partners" class="nav-item <%= locals.currentPath === '/dashboard/partners' ? 'active' : '' %>" style="border-left: 2px solid #3b82f6; border-radius: 0 8px 8px 0;">
+                <i class="fa-solid fa-handshake" style="color: #3b82f6;"></i>
+                <span>Partner</span>
             </a>
-            <a href="/dashboard/radio" class="nav-item <%= locals.currentPath === '/dashboard/radio' ? 'active' : '' %>" style="border-left: 2px solid #10b981; border-radius: 0 8px 8px 0;">
-                <i class="fa-solid fa-tower-broadcast" style="color: #10b981;"></i>
-                <span>Radio 24/7</span>
-            </a>
-            <a href="/dashboard/creator-program" class="nav-item <%= locals.currentPath === '/dashboard/creator-program' ? 'active' : '' %>" style="border-left: 2px solid #8b5cf6; border-radius: 0 8px 8px 0;">
-                <i class="fa-solid fa-gift" style="color: #8b5cf6;"></i>
-                <span>Stream XP Drops</span>
-            </a>
+            <% if (user.isOwner) { %>
+                <a href="/dashboard/db" class="nav-item <%= locals.currentPath === '/dashboard/db' ? 'active' : '' %>" style="border-left: 2px solid var(--danger); border-radius: 0 8px 8px 0;">
+                    <i class="fa-solid fa-database" style="color: var(--danger);"></i>
+                    <span>Datenbank Editor</span>
+                </a>
+                <a href="/dashboard/radio" class="nav-item <%= locals.currentPath === '/dashboard/radio' ? 'active' : '' %>" style="border-left: 2px solid #10b981; border-radius: 0 8px 8px 0;">
+                    <i class="fa-solid fa-tower-broadcast" style="color: #10b981;"></i>
+                    <span>Radio 24/7</span>
+                </a>
+                <a href="/dashboard/creator-program" class="nav-item <%= locals.currentPath === '/dashboard/creator-program' ? 'active' : '' %>" style="border-left: 2px solid #8b5cf6; border-radius: 0 8px 8px 0;">
+                    <i class="fa-solid fa-gift" style="color: #8b5cf6;"></i>
+                    <span>Stream XP Drops</span>
+                </a>
+            <% } %>
         <% } %>
     </div>
 
@@ -57,7 +63,7 @@
             <img src="<%= user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="Avatar">
             <div class="user-info">
                 <span class="user-name"><%= user.username %></span>
-                <span class="user-role"><%= user.isOwner ? 'Besitzer' : 'Moderator' %></span>
+                <span class="user-role"><%= user.isOwner ? 'Besitzer' : (user.isAdmin ? 'Admin' : 'Moderator') %></span>
             </div>
         </div>
         <a href="/logout" class="btn btn-logout">
