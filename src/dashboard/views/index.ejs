@@ -140,6 +140,33 @@
             box-shadow: 0 10px 20px rgba(249, 115, 22, 0.3);
         }
 
+        .btn-gameserver {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            background-color: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: white;
+            text-decoration: none;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            width: 100%;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-gameserver:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-color: rgba(249, 115, 22, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            color: #f8fafc;
+        }
+
         .discord-icon {
             width: 24px;
             height: 24px;
@@ -178,6 +205,10 @@
             
             <a href="/leaderboard" class="btn-leaderboard">
                 🏆 Öffentliches Leaderboard
+            </a>
+
+            <a href="/server" class="btn-gameserver">
+                🎮 Community Gameserver
             </a>
         </div>
     </div>

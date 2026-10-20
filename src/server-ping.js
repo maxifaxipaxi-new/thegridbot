@@ -1,5 +1,6 @@
 import net from 'node:net';
 import dgram from 'node:dgram';
+import { exec } from 'node:child_process';
 
 // Default port mappings for known game types
 const DEFAULT_PORTS = {
@@ -22,7 +23,8 @@ const DEFAULT_PORTS = {
   'team fortress 2': 27015,
   factorio: 34197,
   gmod: 27015,
-  'garrys mod': 27015
+  'garrys mod': 27015,
+  wreckfest: 27007
 };
 
 // Cache status for 30 seconds to prevent hammering game servers and keep web response snappy
@@ -84,7 +86,6 @@ export function pingTcp(host, port, timeout = 1500) {
     });
 
     socket.on('error', (err) => {
-      // In some firewalled TCP games, ECONNREFUSED might happen if UDP-only
       finish({ online: false, error: err.code || err.message, latency: null });
     });
 
@@ -97,9 +98,9 @@ export function pingTcp(host, port, timeout = 1500) {
 }
 
 /**
- * Ping via Steam/Source A2S_INFO query (UDP)
+ * Ping via Steam/Source A2S_INFO query (UDP) with challenge support
  */
-export function pingA2s(host, port, timeout = 1500) {
+export function pingA2s(host, port, timeout = 1200) {
   const start = Date.now();
   return new Promise((resolve) => {
     let resolved = false;
@@ -119,7 +120,24 @@ export function pingA2s(host, port, timeout = 1500) {
       }
     }, timeout);
 
+    const query = Buffer.from([
+      0xFF, 0xFF, 0xFF, 0xFF,
+      0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
+      0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51,
+      0x75, 0x65, 0x72, 0x79, 0x00
+    ]);
+
     client.on('message', (msg) => {
+      // If Steam sends a challenge response (0x41), resend with challenge
+      if (msg[4] === 0x41 && msg.length >= 9) {
+        const challenge = msg.slice(5, 9);
+        const resend = Buffer.concat([query, challenge]);
+        try {
+          client.send(resend, 0, resend.length, port, host);
+        } catch (e) {}
+        return;
+      }
+
       if (!resolved) {
         resolved = true;
         clearTimeout(timer);
@@ -138,14 +156,6 @@ export function pingA2s(host, port, timeout = 1500) {
       }
     });
 
-    // Standard A2S_INFO packet: FF FF FF FF 54 53 6F 75 72 63 65 20 45 6E 67 69 6E 65 20 51 75 65 72 79 00
-    const query = Buffer.from([
-      0xFF, 0xFF, 0xFF, 0xFF,
-      0x54, 0x53, 0x6F, 0x75, 0x72, 0x63, 0x65, 0x20,
-      0x45, 0x6E, 0x67, 0x69, 0x6E, 0x65, 0x20, 0x51,
-      0x75, 0x65, 0x72, 0x79, 0x00
-    ]);
-
     try {
       client.send(query, 0, query.length, port, host);
     } catch (err) {
@@ -156,6 +166,35 @@ export function pingA2s(host, port, timeout = 1500) {
         resolve({ online: false, error: err.message, latency: null });
       }
     }
+  });
+}
+
+/**
+ * Ping via ICMP as reliable fallback for hosting providers with UDP query filtering
+ */
+export function pingIcmp(host) {
+  return new Promise((resolve) => {
+    const cleanHost = (host || '').trim();
+    if (!cleanHost || /[^a-zA-Z0-9.-]/.test(cleanHost)) {
+      return resolve({ online: false, latency: null });
+    }
+
+    const start = Date.now();
+    let cmd = `ping -c 1 -W 2 ${cleanHost}`;
+    if (process.platform === 'darwin') {
+      cmd = `ping -c 1 -t 2 ${cleanHost}`;
+    } else if (process.platform === 'win32') {
+      cmd = `ping -n 1 -w 2000 ${cleanHost}`;
+    }
+
+    exec(cmd, { timeout: 2500 }, (err, stdout) => {
+      if (err) {
+        return resolve({ online: false, latency: null });
+      }
+      const match = stdout.match(/time[=<]([0-9.]+)\s*ms/i);
+      const latency = match ? Math.round(parseFloat(match[1])) : Math.max(1, Date.now() - start);
+      resolve({ online: true, latency });
+    });
   });
 }
 
@@ -176,28 +215,43 @@ export async function checkServerStatus(server, forceRefresh = false) {
 
   let statusResult = { online: false, latency: null };
 
-  // First try TCP ping
-  const tcpResult = await pingTcp(host, port, 1500);
+  // 1. Try TCP socket ping
+  const tcpResult = await pingTcp(host, port, 1200);
   if (tcpResult.online) {
     statusResult = tcpResult;
   } else {
-    // If TCP failed and game is commonly UDP/Steam-based, try A2S query
+    // 2. Try UDP/A2S query on port and offsets for games that use Steam / Source
     const isSourceOrUdp = [
-      'valheim', 'palworld', 'cs2', 'counter-strike', 'rust', 'ark',
-      'enshrouded', '7 days to die', 'gmod', 'tf2', 'team fortress'
+      'wreckfest', 'valheim', 'palworld', 'cs2', 'counter-strike', 'rust', 'ark',
+      'enshrouded', '7 days to die', 'gmod', 'tf2', 'team fortress', 'terraria',
+      'assetto corsa', 'project zomboid'
     ].some(t => lowerType.includes(t));
 
     if (isSourceOrUdp) {
-      // Often query port is same port or port + 1 or port + 15
-      const a2sResult = await pingA2s(host, port, 1500);
-      if (a2sResult.online) {
-        statusResult = a2sResult;
+      // Try configured port
+      const a2s1 = await pingA2s(host, port, 800);
+      if (a2s1.online) {
+        statusResult = a2s1;
       } else {
-        // Try port + 1 for steam query port offset
-        const a2sResultOffset = await pingA2s(host, port + 1, 1000);
-        if (a2sResultOffset.online) {
-          statusResult = a2sResultOffset;
+        // Try Nitrado query port offset (port + 1)
+        const a2s2 = await pingA2s(host, port + 1, 800);
+        if (a2s2.online) {
+          statusResult = a2s2;
+        } else if (port > 1) {
+          // Try port - 1
+          const a2s3 = await pingA2s(host, port - 1, 800);
+          if (a2s3.online) {
+            statusResult = a2s3;
+          }
         }
+      }
+    }
+
+    // 3. If still offline, try ICMP ping fallback (host is alive and reachable)
+    if (!statusResult.online) {
+      const icmpResult = await pingIcmp(host);
+      if (icmpResult.online) {
+        statusResult = icmpResult;
       }
     }
   }
