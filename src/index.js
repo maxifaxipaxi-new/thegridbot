@@ -11,6 +11,7 @@ import { startRadio } from './radio.js';
 import { handleWaitingRoomJoin, handleWaitingRoomButton } from './waiting-room.js';
 import { startGiveawayScheduler } from './giveaways.js';
 import { startLobbyScheduler, handleLobbyInteraction, setupThreadDeleteListener } from './lobby-system.js';
+import { checkServerStatus, getExpirationInfo } from './server-ping.js';
 
 dotenv.config();
 
@@ -545,6 +546,79 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       await interaction.reply({ embeds: [embed], components });
+      return;
+    }
+
+    // /servers & /server
+    if (commandName === 'servers' || commandName === 'server') {
+      await interaction.deferReply();
+
+      const servers = await db.getAllServers(true);
+
+      const embed = new EmbedBuilder()
+        .setTitle('🎮 the grid. Community-Gameserver')
+        .setColor('#FFA500')
+        .setThumbnail('https://my.thegridcom.org/public/logo.png')
+        .setTimestamp()
+        .setFooter({
+          text: '🫵 | the grid. Gaming Hub',
+          iconURL: 'https://my.thegridcom.org/public/logo.png'
+        });
+
+      if (!servers || servers.length === 0) {
+        embed.setDescription('Aktuell sind keine offiziellen Community-Gameserver eingetragen.\n\nDu hast einen Server-Vorschlag? Kontaktiere unser Team gerne per Ticket!');
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+
+      const enrichedServers = await Promise.all(
+        servers.map(async (s) => {
+          const status = await checkServerStatus(s);
+          const expiration = getExpirationInfo(s.expires_at);
+          return { ...s, status, expiration };
+        })
+      );
+
+      const serverEntries = enrichedServers.map(s => {
+        const fullAddr = s.port ? `${s.host}:${s.port}` : s.host;
+        const statusText = s.status.online 
+          ? `🟢 **Online**${s.status.latency ? ` (${s.status.latency}ms)` : ''}`
+          : '🔴 **Offline**';
+        const pwdText = s.password && s.password.trim().length > 0 
+          ? `🔑 \`${s.password}\`` 
+          : '🔓 *Kein Passwort*';
+
+        let entry = `### 🎮 ${s.name} (${s.game_type})\n` +
+          `• **Status:** ${statusText}\n` +
+          `• **Adresse:** \`${fullAddr}\`\n` +
+          `• **Laufzeit:** ${s.expiration.text}\n` +
+          `• **Passwort:** ${pwdText}`;
+
+        if (s.description && s.description.trim().length > 0) {
+          entry += `\n• **Info:** ${s.description}`;
+        }
+        if (s.additional_info && s.additional_info.trim().length > 0) {
+          entry += `\n• **Setup:** *${s.additional_info}*`;
+        }
+        return entry;
+      });
+
+      embed.setDescription(
+        'Hier findest du eine Übersicht über alle offiziellen Server unserer Community.\n' +
+        'Kopiere einfach die IP-Adresse und tritt uns im Game bei!\n\n' +
+        serverEntries.join('\n\n───────────────\n\n') +
+        '\n\n[🌐 Für die interaktive Web-Übersicht klicke hier!](https://my.thegridcom.org/server)'
+      );
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel('🌐 Web-Übersicht öffnen')
+          .setStyle(ButtonStyle.Link)
+          .setURL('https://my.thegridcom.org/server')
+          .setEmoji('🔗')
+      );
+
+      await interaction.editReply({ embeds: [embed], components: [row] });
       return;
     }
 

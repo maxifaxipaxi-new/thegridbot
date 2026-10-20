@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Grid - Community Gameserver</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --accent-color: #f97316;
+            --accent-glow: rgba(249, 115, 22, 0.25);
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-card: rgba(30, 41, 59, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-hover: rgba(249, 115, 22, 0.4);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --cyan: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(249, 115, 22, 0.12), transparent 35%),
+                radial-gradient(circle at 90% 40%, rgba(56, 189, 248, 0.08), transparent 35%),
+                radial-gradient(circle at 50% 90%, rgba(139, 92, 246, 0.06), transparent 40%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+        }
+
+        /* Navigation Bar */
+        .navbar {
+            width: 100%;
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+
+        .brand img {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        .brand-text {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-text span {
+            color: var(--accent-color);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .nav-btn-admin {
+            color: var(--accent-color);
+            background: rgba(249, 115, 22, 0.12);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-btn-admin:hover {
+            background: var(--accent-color);
+            color: #fff;
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1240px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 40px 24px 80px 24px;
+            flex: 1;
+        }
+
+        /* Hero Header */
+        .hero {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.25);
+            border-radius: 20px;
+            color: var(--accent-color);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .hero-title {
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, #ffffff 40%, var(--text-muted) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-subtitle {
+            font-size: 17px;
+            color: var(--text-muted);
+            max-width: 680px;
+            margin: 0 auto 28px auto;
+            line-height: 1.6;
+        }
+
+        /* Stats Row */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 36px;
+        }
+
+        .stat-card {
+            background: var(--glass-card);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-icon.orange { background: rgba(249, 115, 22, 0.15); color: var(--accent-color); }
+        .stat-icon.green  { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+        .stat-icon.blue   { background: rgba(56, 189, 248, 0.15); color: var(--cyan); }
+        .stat-icon.purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
+
+        .stat-val {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text-main);
+            line-height: 1.1;
+        }
+
+        .stat-lbl {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        /* Controls (Filter + Search) */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-btn {
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .filter-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        .search-box {
+            position: relative;
+            min-width: 260px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 16px 10px 38px;
+            background: var(--glass-card);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Server Grid */
+        .servers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 24px;
+        }
+
+        /* Server Card */
+        .server-card {
+            background: var(--glass-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+            overflow: hidden;
+        }
+
+        .server-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--glass-border-hover);
+            box-shadow: 0 16px 36px -10px rgba(0, 0, 0, 0.6);
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .game-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: #e2e8f0;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+        }
+
+        .status-badge.online {
+            color: var(--success);
+            border-color: rgba(34, 197, 94, 0.3);
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .status-badge.offline {
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            display: inline-block;
+        }
+
+        .status-dot.pulse {
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulseGreen 2s infinite;
+        }
+
+        @keyframes pulseGreen {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        .server-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .server-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin-bottom: 18px;
+            flex-grow: 1;
+        }
+
+        /* Expiration Banner */
+        .expiration-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+
+        .expiration-label {
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-permanent {
+            color: var(--cyan);
+            font-weight: 600;
+        }
+
+        .badge-active {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .badge-expiring-soon {
+            color: var(--warning);
+            font-weight: 700;
+        }
+
+        .badge-expired {
+            color: var(--danger);
+            font-weight: 700;
+        }
+
+        /* Connect Details */
+        .connection-box {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .address-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .address-text {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 13px;
+            color: #38bdf8;
+            word-break: break-all;
+            user-select: all;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .copy-btn.copied {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .password-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+        }
+
+        .password-label {
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .password-val {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            color: #fb923c;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* Additional Info / Notes */
+        .additional-info {
+            background: rgba(249, 115, 22, 0.05);
+            border-left: 3px solid var(--accent-color);
+            border-radius: 0 8px 8px 0;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .additional-info strong {
+            color: var(--accent-color);
+            display: block;
+            margin-bottom: 2px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Action Buttons */
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+        }
+
+        .btn-connect {
+            flex: 1;
+            background: var(--accent-color);
+            color: white;
+            text-decoration: none;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-connect:hover {
+            background: #ea580c;
+            box-shadow: 0 4px 14px var(--accent-glow);
+        }
+
+        .btn-refresh {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-refresh:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-refresh.spinning i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--glass-card);
+            border: 1px dashed var(--glass-border);
+            border-radius: 20px;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 32px 20px;
+            border-top: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            font-size: 13px;
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .footer a {
+            color: var(--cyan);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 14px 20px;
+            }
+            .hero-title {
+                font-size: 30px;
+            }
+            .hero-subtitle {
+                font-size: 15px;
+            }
+            .controls-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .search-box {
+                width: 100%;
+            }
+            .servers-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <a href="/" class="brand">
+            <img src="/public/logo.png" alt="the grid. logo" onerror="this.style.display='none'">
+            <div class="brand-text">the <span>grid.</span></div>
+        </a>
+
+        <div class="nav-links">
+            <a href="/leaderboard" class="nav-link">
+                <i class="fa-solid fa-trophy"></i> <span>Leaderboard</span>
+            </a>
+            <a href="/server" class="nav-link active">
+                <i class="fa-solid fa-server"></i> <span>Gameserver</span>
+            </a>
+            <a href="/server-settings" class="nav-btn-admin">
+                <i class="fa-solid fa-gear"></i> <span>Server-Settings</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="container">
+        <!-- Hero Section -->
+        <header class="hero">
+            <div class="hero-badge">
+                <i class="fa-solid fa-gamepad"></i> the grid. Community Gaming Hub
+            </div>
+            <h1 class="hero-title">Offizielle Community-Gameserver</h1>
+            <p class="hero-subtitle">
+                Hier findest du alle laufenden Server unserer Community mit Live-Online-Status, Verbindungsdaten, Laufzeiten und Setup-Hinweisen. Tritt bei und zocke mit uns!
+            </p>
+        </header>
+
+        <!-- Stats Overview -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fa-solid fa-server"></i>
+                </div>
+                <div>
+                    <div class="stat-val"><%= servers ? servers.length : 0 %></div>
+                    <div class="stat-lbl">Aktive Gameserver</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fa-solid fa-signal"></i>
+                </div>
+                <div>
+                    <div class="stat-val" id="online-counter">
+                        <%= servers ? servers.filter(s => s.status && s.status.online).length : 0 %>
+                    </div>
+                    <div class="stat-lbl">Online erreichbar</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <div class="stat-val">Free & Open</div>
+                    <div class="stat-lbl">Für alle Community-Mitglieder</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div>
+                    <div class="stat-val">/servers</div>
+                    <div class="stat-lbl">Auch direkt im Discord Bot</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Controls: Filters & Search -->
+        <div class="controls-bar">
+            <div class="filter-group" id="filter-buttons">
+                <button type="button" class="filter-btn active" data-filter="all">
+                    <i class="fa-solid fa-border-all"></i> Alle Spiele (<%= servers ? servers.length : 0 %>)
+                </button>
+                <% 
+                  const gameTypes = [];
+                  if (servers) {
+                    servers.forEach(s => {
+                      if (s.game_type && !gameTypes.includes(s.game_type)) {
+                        gameTypes.push(s.game_type);
+                      }
+                    });
+                  }
+                  gameTypes.forEach(gt => {
+                    const count = servers.filter(s => s.game_type === gt).length;
+                %>
+                    <button type="button" class="filter-btn" data-filter="<%= gt.toLowerCase() %>">
+                        <%= gt %> (<%= count %>)
+                    </button>
+                <% }); %>
+            </div>
+
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" id="server-search" placeholder="Server nach Name, Spiel oder IP filtern...">
+            </div>
+        </div>
+
+        <!-- Servers Grid -->
+        <section class="servers-grid" id="servers-grid">
+            <% if (!servers || servers.length === 0) { %>
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fa-solid fa-server"></i></div>
+                    <h3>Aktuell sind keine Gameserver eingetragen</h3>
+                    <p style="color: var(--text-muted); margin-top: 8px;">
+                        Schau bald wieder vorbei oder schlage unserem Team auf Discord einen neuen Server vor!
+                    </p>
+                </div>
+            <% } else { %>
+                <% servers.forEach(s => { 
+                    const isOnline = s.status && s.status.online;
+                    const latency = s.status && s.status.latency ? s.status.latency + 'ms' : '';
+                    const fullAddress = s.port ? `${s.host}:${s.port}` : s.host;
+                    const exp = s.expiration;
+                %>
+                    <article class="server-card" 
+                             data-game="<%= (s.game_type || '').toLowerCase() %>" 
+                             data-name="<%= (s.name || '').toLowerCase() %>"
+                             data-host="<%= fullAddress.toLowerCase() %>"
+                             id="server-card-<%= s.id %>">
+                        
+                        <div>
+                            <div class="card-top">
+                                <span class="game-badge">
+                                    <i class="fa-solid fa-gamepad"></i> <%= s.game_type %>
+                                </span>
+
+                                <span class="status-badge <%= isOnline ? 'online' : 'offline' %>" id="status-badge-<%= s.id %>">
+                                    <span class="status-dot <%= isOnline ? 'pulse' : '' %>"></span>
+                                    <span class="status-text">
+                                        <%= isOnline ? `Online ${latency ? '(' + latency + ')' : ''}` : 'Offline' %>
+                                    </span>
+                                </span>
+                            </div>
+
+                            <h2 class="server-title"><%= s.name %></h2>
+
+                            <% if (s.description) { %>
+                                <p class="server-desc"><%= s.description %></p>
+                            <% } else { %>
+                                <p class="server-desc" style="font-style: italic; color: #64748b;">Keine weitere Beschreibung angegeben.</p>
+                            <% } %>
+
+                            <!-- Expiration Banner -->
+                            <div class="expiration-banner">
+                                <div class="expiration-label">
+                                    <i class="fa-regular fa-clock"></i>
+                                    <span>Laufzeit:</span>
+                                </div>
+                                <div class="<%= exp.badgeClass %>" title="<%= exp.dateFormatted %>">
+                                    <%= exp.text %>
+                                </div>
+                            </div>
+
+                            <!-- Connection Details Box -->
+                            <div class="connection-box">
+                                <div class="address-row">
+                                    <span class="address-text" id="host-text-<%= s.id %>"><%= fullAddress %></span>
+                                    <button type="button" class="copy-btn" onclick="copyToClipboard('<%= fullAddress %>', this)">
+                                        <i class="fa-regular fa-copy"></i> <span>Kopieren</span>
+                                    </button>
+                                </div>
+
+                                <div class="password-row">
+                                    <div class="password-label">
+                                        <i class="fa-solid fa-key"></i> Passwort:
+                                    </div>
+                                    <div class="password-val">
+                                        <% if (s.password && s.password.trim().length > 0) { %>
+                                            <span id="pwd-text-<%= s.id %>" data-pwd="<%= s.password %>">••••••••</span>
+                                            <button type="button" class="copy-btn" style="padding: 2px 6px; font-size: 11px;" onclick="togglePassword(<%= s.id %>, this)">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </button>
+                                            <button type="button" class="copy-btn" style="padding: 2px 6px; font-size: 11px;" onclick="copyToClipboard('<%= s.password %>', this)">
+                                                <i class="fa-regular fa-copy"></i>
+                                            </button>
+                                        <% } else { %>
+                                            <span style="color: var(--text-muted); font-size: 12px;">Kein Passwort</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Additional Info / Instructions -->
+                            <% if (s.additional_info && s.additional_info.trim().length > 0) { %>
+                                <div class="additional-info">
+                                    <strong><i class="fa-solid fa-circle-info"></i> Hinweise & Setup</strong>
+                                    <%= s.additional_info %>
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <!-- Card Actions -->
+                        <div class="card-actions">
+                            <% 
+                              const lowerType = (s.game_type || '').toLowerCase();
+                              let connectUrl = '';
+                              if (lowerType.includes('cs') || lowerType.includes('counter') || lowerType.includes('valheim') || lowerType.includes('rust') || lowerType.includes('ark') || lowerType.includes('tf2') || lowerType.includes('gmod')) {
+                                connectUrl = `steam://connect/${fullAddress}${s.password ? '/' + encodeURIComponent(s.password) : ''}`;
+                              }
+                            %>
+
+                            <% if (connectUrl) { %>
+                                <a href="<%= connectUrl %>" class="btn-connect">
+                                    <i class="fa-brands fa-steam"></i> Direkt verbinden
+                                </a>
+                            <% } else { %>
+                                <button type="button" class="btn-connect" onclick="copyToClipboard('<%= fullAddress %>', this)">
+                                    <i class="fa-solid fa-plug"></i> IP kopieren & Beitreten
+                                </button>
+                            <% } %>
+
+                            <button type="button" class="btn-refresh" title="Status jetzt aktualisieren" onclick="refreshStatus(<%= s.id %>, this)">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </article>
+                <% }); %>
+            <% } %>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>
+            © <%= new Date().getFullYear() %> the grid. Community • 
+            <a href="/leaderboard">Leaderboard</a> • 
+            <a href="/server">Gameserver</a> • 
+            <a href="/impressum">Impressum</a> • 
+            <a href="/datenschutz">Datenschutz</a>
+        </p>
+    </footer>
+
+    <!-- Client-side Logic -->
+    <script>
+        // Copy to clipboard helper
+        function copyToClipboard(text, btnElement) {
+            navigator.clipboard.writeText(text).then(() => {
+                const span = btnElement.querySelector('span');
+                const originalHtml = btnElement.innerHTML;
+                btnElement.classList.add('copied');
+                if (span) {
+                    span.innerText = 'Kopiert!';
+                } else {
+                    btnElement.innerHTML = '<i class="fa-solid fa-check"></i>';
+                }
+                setTimeout(() => {
+                    btnElement.classList.remove('copied');
+                    btnElement.innerHTML = originalHtml;
+                }, 2000);
+            }).catch(err => {
+                console.error('Kopieren fehlgeschlagen:', err);
+            });
+        }
+
+        // Toggle password visibility
+        function togglePassword(id, btnElement) {
+            const pwdSpan = document.getElementById(`pwd-text-${id}`);
+            if (!pwdSpan) return;
+            const realPwd = pwdSpan.getAttribute('data-pwd');
+            const icon = btnElement.querySelector('i');
+
+            if (pwdSpan.innerText === '••••••••') {
+                pwdSpan.innerText = realPwd;
+                if (icon) {
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                }
+            } else {
+                pwdSpan.innerText = '••••••••';
+                if (icon) {
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            }
+        }
+
+        // Live refresh status via AJAX API
+        function refreshStatus(serverId, btnElement) {
+            btnElement.classList.add('spinning');
+            fetch(`/api/server-status/${serverId}?refresh=1`)
+                .then(res => res.json())
+                .then(data => {
+                    btnElement.classList.remove('spinning');
+                    const badge = document.getElementById(`status-badge-${serverId}`);
+                    if (!badge) return;
+
+                    if (data.online) {
+                        badge.className = 'status-badge online';
+                        badge.innerHTML = `
+                            <span class="status-dot pulse"></span>
+                            <span class="status-text">Online ${data.latency ? '(' + data.latency + 'ms)' : ''}</span>
+                        `;
+                    } else {
+                        badge.className = 'status-badge offline';
+                        badge.innerHTML = `
+                            <span class="status-dot"></span>
+                            <span class="status-text">Offline</span>
+                        `;
+                    }
+                })
+                .catch(err => {
+                    btnElement.classList.remove('spinning');
+                    console.error('Fehler bei Statusabfrage:', err);
+                });
+        }
+
+        // Game type filter & Search input
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const searchInput = document.getElementById('server-search');
+        const serverCards = document.querySelectorAll('.server-card');
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        function applyFilters() {
+            serverCards.forEach(card => {
+                const cardGame = card.getAttribute('data-game') || '';
+                const cardName = card.getAttribute('data-name') || '';
+                const cardHost = card.getAttribute('data-host') || '';
+
+                const matchesFilter = (currentFilter === 'all') || (cardGame === currentFilter);
+                const matchesSearch = !searchQuery || 
+                                      cardName.includes(searchQuery) || 
+                                      cardGame.includes(searchQuery) || 
+                                      cardHost.includes(searchQuery);
+
+                if (matchesFilter && matchesSearch) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.getAttribute('data-filter');
+                applyFilters();
+            });
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase().trim();
+                applyFilters();
+            });
+        }
+    </script>
+</body>
+</html>

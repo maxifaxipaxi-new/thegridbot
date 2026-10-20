@@ -79,6 +79,14 @@ const commands = [
         .setDescription('Der User, dessen Spiele du einsehen möchtest (optional)')
         .setRequired(false)
     ),
+
+  new SlashCommandBuilder()
+    .setName('servers')
+    .setDescription('Zeigt alle offiziellen Gameserver der Community, Online-Status & Laufzeiten an.'),
+
+  new SlashCommandBuilder()
+    .setName('server')
+    .setDescription('Zeigt alle offiziellen Gameserver der Community, Online-Status & Laufzeiten an.'),
 ].map(command => command.toJSON());
 
 if (!process.env.DISCORD_TOKEN || !process.env.DISCORD_CLIENT_ID) {

@@ -169,6 +169,21 @@ class Database {
         key TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS community_servers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        host TEXT NOT NULL,
+        port INTEGER,
+        game_type TEXT NOT NULL,
+        description TEXT,
+        password TEXT,
+        expires_at INTEGER,
+        additional_info TEXT,
+        is_active INTEGER DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        createdAt INTEGER
+      );
     `);
 
     try {
@@ -206,6 +221,31 @@ class Database {
             'Frogly Studios',
             'Frogly Studios ist ein innovatives Game- und Softwarestudio, welches durch seinen erstklassigen Support die Entwicklung und den Betrieb dieses Bots (the grid.) maßgeblich ermöglicht.',
             'https://frogly.fun',
+            Date.now()
+          ]
+        );
+      }
+    } catch (err) {}
+
+    try {
+      const serverCount = await db.get('SELECT COUNT(*) as count FROM community_servers');
+      if (serverCount && serverCount.count === 0) {
+        // Seed default example community servers
+        const thirtyDaysFromNow = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        await db.run(
+          `INSERT INTO community_servers (name, host, port, game_type, description, password, expires_at, additional_info, is_active, sort_order, createdAt)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            'the grid. Minecraft Survival',
+            'mc.thegridcom.org',
+            25565,
+            'Minecraft',
+            'Unser offizieller Vanilla Survival Server mit Grief-Protection und aktiver Community!',
+            '',
+            thirtyDaysFromNow,
+            'Version 1.21.1 Java & Bedrock Support (Port 19132)',
+            1,
+            1,
             Date.now()
           ]
         );
@@ -793,6 +833,78 @@ class Database {
   async setLobbyConfig(key, value) {
     const db = await this.dbPromise;
     await db.run('INSERT OR REPLACE INTO lobby_config (key, value) VALUES (?, ?)', [key, value]);
+  }
+
+  // --- Community Servers ---
+  async getAllServers(onlyActive = false) {
+    const db = await this.dbPromise;
+    if (onlyActive) {
+      return await db.all('SELECT * FROM community_servers WHERE is_active = 1 ORDER BY sort_order ASC, id ASC');
+    }
+    return await db.all('SELECT * FROM community_servers ORDER BY sort_order ASC, id ASC');
+  }
+
+  async getServer(id) {
+    const db = await this.dbPromise;
+    return await db.get('SELECT * FROM community_servers WHERE id = ?', [id]);
+  }
+
+  async addServer({ name, host, port, game_type, description, password, expires_at, additional_info, is_active = 1, sort_order = 0 }) {
+    const db = await this.dbPromise;
+    const result = await db.run(
+      `INSERT INTO community_servers (name, host, port, game_type, description, password, expires_at, additional_info, is_active, sort_order, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        host,
+        port ? parseInt(port, 10) : null,
+        game_type,
+        description || '',
+        password || '',
+        expires_at ? parseInt(expires_at, 10) : null,
+        additional_info || '',
+        is_active ? 1 : 0,
+        sort_order ? parseInt(sort_order, 10) : 0,
+        Date.now()
+      ]
+    );
+    return result.lastID;
+  }
+
+  async updateServer(id, { name, host, port, game_type, description, password, expires_at, additional_info, is_active = 1, sort_order = 0 }) {
+    const db = await this.dbPromise;
+    await db.run(
+      `UPDATE community_servers 
+       SET name = ?, host = ?, port = ?, game_type = ?, description = ?, password = ?, expires_at = ?, additional_info = ?, is_active = ?, sort_order = ?
+       WHERE id = ?`,
+      [
+        name,
+        host,
+        port ? parseInt(port, 10) : null,
+        game_type,
+        description || '',
+        password || '',
+        expires_at ? parseInt(expires_at, 10) : null,
+        additional_info || '',
+        is_active ? 1 : 0,
+        sort_order ? parseInt(sort_order, 10) : 0,
+        id
+      ]
+    );
+  }
+
+  async toggleServerActive(id) {
+    const db = await this.dbPromise;
+    const server = await this.getServer(id);
+    if (!server) return null;
+    const newStatus = server.is_active ? 0 : 1;
+    await db.run('UPDATE community_servers SET is_active = ? WHERE id = ?', [newStatus, id]);
+    return newStatus;
+  }
+
+  async deleteServer(id) {
+    const db = await this.dbPromise;
+    await db.run('DELETE FROM community_servers WHERE id = ?', [id]);
   }
 }
 

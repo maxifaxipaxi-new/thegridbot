@@ -11,6 +11,7 @@ import { updateUserXPFromDashboard } from '../leveling.js';
 import { EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import multer from 'multer';
 import { startRadio, stopRadio } from '../radio.js';
+import { checkServerStatus, getExpirationInfo } from '../server-ping.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,6 +125,42 @@ export function startDashboard(client) {
     } catch (err) {
       console.error('Fehler beim Laden des Leaderboards:', err);
       res.status(500).send('Interner Serverfehler beim Laden des Leaderboards.');
+    }
+  });
+
+  // --- Public Gameserver Page (No login required) ---
+  app.get('/server', async (req, res) => {
+    try {
+      const servers = await db.getAllServers(true);
+      const enrichedServers = await Promise.all(
+        servers.map(async (s) => {
+          const status = await checkServerStatus(s);
+          const expiration = getExpirationInfo(s.expires_at);
+          return { ...s, status, expiration };
+        })
+      );
+      res.render('servers_public', { servers: enrichedServers });
+    } catch (err) {
+      console.error('Fehler beim Laden der Gameserver-Seite:', err);
+      res.status(500).send('Interner Serverfehler beim Laden der Gameserver-Übersicht.');
+    }
+  });
+
+  app.get('/servers', (req, res) => {
+    res.redirect('/server');
+  });
+
+  // API to fetch or force-refresh single server status
+  app.get('/api/server-status/:id', async (req, res) => {
+    try {
+      const id = req.params.id;
+      const server = await db.getServer(id);
+      if (!server) return res.status(404).json({ error: 'Server nicht gefunden' });
+      const forceRefresh = req.query.refresh === '1';
+      const status = await checkServerStatus(server, forceRefresh);
+      res.json(status);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -772,6 +809,127 @@ export function startDashboard(client) {
     } catch (err) {
       console.error('Fehler beim Löschen des Partners:', err);
       res.redirect('/dashboard/partners?error=Fehler beim Löschen');
+    }
+  });
+
+  // --- Gameserver Management (Admin Only) ---
+  app.get('/server-settings', checkAdmin, async (req, res) => {
+    try {
+      const servers = await db.getAllServers(false); // all servers (active + inactive)
+      const enrichedServers = await Promise.all(
+        servers.map(async (s) => {
+          const status = await checkServerStatus(s);
+          const expiration = getExpirationInfo(s.expires_at);
+          return { ...s, status, expiration };
+        })
+      );
+      res.render('server_settings', {
+        user: req.session.user,
+        servers: enrichedServers,
+        successMsg: req.query.success,
+        errorMsg: req.query.error
+      });
+    } catch (err) {
+      console.error('Fehler beim Laden der Server-Settings:', err);
+      res.redirect('/dashboard?error=Fehler beim Laden der Gameserver-Verwaltung');
+    }
+  });
+
+  app.get('/dashboard/server-settings', checkAdmin, (req, res) => {
+    res.redirect('/server-settings');
+  });
+
+  app.post('/server-settings/add', checkAdmin, async (req, res) => {
+    try {
+      let { name, game_type, host, port, password, is_permanent, expires_date, expires_time, description, additional_info, is_active } = req.body;
+      if (!name || !game_type || !host) {
+        return res.redirect('/server-settings?error=Bitte Name, Spiel und Hostname ausfüllen');
+      }
+
+      let expires_at = null;
+      if (!is_permanent && expires_date) {
+        const timeStr = expires_time || '23:59';
+        const expDate = new Date(`${expires_date}T${timeStr}:00`);
+        if (!isNaN(expDate.getTime())) {
+          expires_at = expDate.getTime();
+        }
+      }
+
+      await db.addServer({
+        name: name.trim(),
+        game_type: game_type.trim(),
+        host: host.trim(),
+        port: port ? parseInt(port, 10) : null,
+        password: password ? password.trim() : '',
+        expires_at,
+        description: description ? description.trim() : '',
+        additional_info: additional_info ? additional_info.trim() : '',
+        is_active: is_active ? 1 : 0
+      });
+
+      res.redirect('/server-settings?success=Gameserver erfolgreich hinzugefügt');
+    } catch (err) {
+      console.error('Fehler beim Hinzufügen des Gameservers:', err);
+      res.redirect('/server-settings?error=Fehler beim Speichern des Gameservers');
+    }
+  });
+
+  app.post('/server-settings/edit', checkAdmin, async (req, res) => {
+    try {
+      let { id, name, game_type, host, port, password, is_permanent, expires_date, expires_time, description, additional_info, is_active } = req.body;
+      if (!id || !name || !game_type || !host) {
+        return res.redirect('/server-settings?error=Bitte alle Pflichtfelder ausfüllen');
+      }
+
+      let expires_at = null;
+      if (!is_permanent && expires_date) {
+        const timeStr = expires_time || '23:59';
+        const expDate = new Date(`${expires_date}T${timeStr}:00`);
+        if (!isNaN(expDate.getTime())) {
+          expires_at = expDate.getTime();
+        }
+      }
+
+      await db.updateServer(id, {
+        name: name.trim(),
+        game_type: game_type.trim(),
+        host: host.trim(),
+        port: port ? parseInt(port, 10) : null,
+        password: password ? password.trim() : '',
+        expires_at,
+        description: description ? description.trim() : '',
+        additional_info: additional_info ? additional_info.trim() : '',
+        is_active: is_active ? 1 : 0
+      });
+
+      res.redirect('/server-settings?success=Gameserver erfolgreich aktualisiert');
+    } catch (err) {
+      console.error('Fehler beim Bearbeiten des Gameservers:', err);
+      res.redirect('/server-settings?error=Fehler beim Bearbeiten');
+    }
+  });
+
+  app.post('/server-settings/delete', checkAdmin, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.redirect('/server-settings?error=Ungültige Anfrage');
+    try {
+      await db.deleteServer(id);
+      res.redirect('/server-settings?success=Gameserver erfolgreich gelöscht');
+    } catch (err) {
+      console.error('Fehler beim Löschen des Gameservers:', err);
+      res.redirect('/server-settings?error=Fehler beim Löschen');
+    }
+  });
+
+  app.post('/server-settings/toggle', checkAdmin, async (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.redirect('/server-settings?error=Ungültige Anfrage');
+    try {
+      await db.toggleServerActive(id);
+      res.redirect('/server-settings?success=Serverstatus erfolgreich umgeschaltet');
+    } catch (err) {
+      console.error('Fehler beim Umschalten des Serverstatus:', err);
+      res.redirect('/server-settings?error=Fehler beim Umschalten');
     }
   });
 

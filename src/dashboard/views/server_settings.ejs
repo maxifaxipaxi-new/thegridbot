@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="de">
+<%- include('partials/head', { title: 'Gameserver Verwaltung - the grid' }) %>
+<body>
+    <%- include('partials/sidebar', { currentPath: '/server-settings' }) %>
+
+    <div class="main-wrapper">
+        <div class="top-bar">
+            <div>
+                <h1 class="page-title">🎮 Gameserver Verwaltung</h1>
+                <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
+                    Verwalte offizielle Community-Gameserver für die öffentliche 
+                    <a href="/server" target="_blank" style="color: #38bdf8; text-decoration: none;"><code>/server</code> Seite</a> 
+                    und den <code>/servers</code> Discord-Befehl.
+                </p>
+            </div>
+            <div>
+                <a href="/server" target="_blank" class="btn btn-secondary" style="padding: 10px 18px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Öffentliche Seite ansehen
+                </a>
+            </div>
+        </div>
+
+        <main class="main-content">
+            <% if (locals.errorMsg) { %>
+                <div class="alert alert-error" style="margin-bottom: 24px; padding: 16px; background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); border-radius: 12px; color: #f8fafc;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-right: 8px;"></i> <%= errorMsg %>
+                </div>
+            <% } %>
+
+            <% if (locals.successMsg) { %>
+                <div class="alert alert-success" style="margin-bottom: 24px; padding: 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid var(--success); border-radius: 12px; color: #f8fafc;">
+                    <i class="fa-solid fa-check-circle" style="color: var(--success); margin-right: 8px;"></i> <%= successMsg %>
+                </div>
+            <% } %>
+
+            <!-- Neuer Gameserver anlegen -->
+            <div class="dashboard-card" style="margin-bottom: 32px;">
+                <h3 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-plus-circle" style="color: var(--accent-color);"></i>
+                    Neuen Gameserver hinzufügen
+                </h3>
+                <form action="/server-settings/add" method="POST">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="add-name" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Server Name *</label>
+                            <input type="text" id="add-name" name="name" class="form-control" placeholder="z. B. the grid. Minecraft Survival" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="add-game" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Spiel / Type *</label>
+                            <input type="text" id="add-game" name="game_type" list="games-list" class="form-control" placeholder="z. B. Minecraft, Valheim, CS2..." required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                            <datalist id="games-list">
+                                <option value="Minecraft">
+                                <option value="Minecraft Bedrock">
+                                <option value="Valheim">
+                                <option value="Palworld">
+                                <option value="Counter-Strike 2">
+                                <option value="Rust">
+                                <option value="Enshrouded">
+                                <option value="ARK: Survival Evolved">
+                                <option value="Terraria">
+                                <option value="7 Days to Die">
+                                <option value="Assetto Corsa">
+                                <option value="Project Zomboid">
+                                <option value="Team Fortress 2">
+                                <option value="Sonstiges">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div class="form-group">
+                            <label class="form-label" for="add-host" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Hostname / Domain / IP *</label>
+                            <input type="text" id="add-host" name="host" class="form-control" placeholder="mc.thegridcom.org oder 123.45.67.89" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="add-port" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Port (Optional)</label>
+                            <input type="number" id="add-port" name="port" class="form-control" placeholder="Standardport" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="add-pwd" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Passwort (Optional)</label>
+                            <input type="text" id="add-pwd" name="password" class="form-control" placeholder="Kein Passwort" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                    </div>
+
+                    <!-- Ablaufzeit / Expiration -->
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <label style="font-weight: 600; font-size: 13px; color: white; display: flex; align-items: center; gap: 8px;">
+                                <i class="fa-regular fa-clock" style="color: #38bdf8;"></i> Ablaufzeit / Wie lange läuft der Server noch?
+                            </label>
+                            <label style="font-size: 13px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                                <input type="checkbox" id="add-permanent" name="is_permanent" value="1" onchange="toggleAddExpiration(this.checked)">
+                                Dauerhaft aktiv / Keine feste Ablaufzeit
+                            </label>
+                        </div>
+                        <div id="add-expires-wrapper" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Ablaufdatum</label>
+                                <input type="date" id="add-expires-date" name="expires_date" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Uhrzeit (Optional)</label>
+                                <input type="time" id="add-expires-time" name="expires_time" value="23:59" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label" for="add-desc" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">Beschreibung</label>
+                        <textarea id="add-desc" name="description" class="form-control" rows="2" placeholder="Kurze Beschreibung des Servers, Spielmodi, Zielgruppe..." style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white; resize: vertical;"></textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label class="form-label" for="add-info" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block;">
+                            Sonstiges & Setup-Hinweise (Modpack, Regeln, Whitelist, Connect-Command...)
+                        </label>
+                        <input type="text" id="add-info" name="additional_info" class="form-control" placeholder="z. B. Version 1.21.1 • Modpack Curseforge Link • Whitelist über Support-Ticket" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="font-size: 13px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" name="is_active" value="1" checked>
+                            Server sofort öffentlich auf <code>/server</code> und im Bot anzeigen
+                        </label>
+                        <button type="submit" class="btn btn-primary" style="padding: 10px 24px; display: inline-flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-floppy-disk"></i> Gameserver speichern
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Liste aller Server -->
+            <div class="dashboard-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3>
+                        <i class="fa-solid fa-server" style="color: var(--accent-color); margin-right: 8px;"></i>
+                        Eingetragene Gameserver (<%= servers ? servers.length : 0 %>)
+                    </h3>
+                    <span style="font-size: 13px; color: var(--text-muted);">
+                        Werden gemeinsam auf <code>/server</code> und bei <code>/servers</code> im Discord aufgelistet
+                    </span>
+                </div>
+
+                <div class="table-container">
+                    <table class="table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-muted); font-size: 13px; text-transform: uppercase;">
+                                <th style="padding: 12px 16px; text-align: left;">Status</th>
+                                <th style="padding: 12px 16px; text-align: left;">Server & Spiel</th>
+                                <th style="padding: 12px 16px; text-align: left;">Adresse & Port</th>
+                                <th style="padding: 12px 16px; text-align: left;">Laufzeit / Ablauf</th>
+                                <th style="padding: 12px 16px; text-align: left;">Passwort</th>
+                                <th style="padding: 12px 16px; text-align: right;">Aktionen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (servers && servers.length > 0) { %>
+                                <% servers.forEach(s => { 
+                                    const isOnline = s.status && s.status.online;
+                                    const latency = s.status && s.status.latency ? s.status.latency + 'ms' : '';
+                                    const exp = s.expiration;
+                                    const fullAddr = s.port ? `${s.host}:${s.port}` : s.host;
+                                %>
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); opacity: <%= s.is_active ? '1' : '0.5' %>;" id="server-row-<%= s.id %>">
+                                        <!-- Live Status -->
+                                        <td style="padding: 16px; vertical-align: top; white-space: nowrap;">
+                                            <div id="admin-status-<%= s.id %>" style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: <%= isOnline ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)' %>; color: <%= isOnline ? '#22c55e' : '#ef4444' %>; border: 1px solid <%= isOnline ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)' %>;">
+                                                <i class="fa-solid fa-circle" style="font-size: 8px;"></i>
+                                                <span><%= isOnline ? `Online ${latency}` : 'Offline' %></span>
+                                            </div>
+                                            <button type="button" onclick="testPing(<%= s.id %>, this)" title="Status prüfen" style="margin-left: 6px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px;">
+                                                <i class="fa-solid fa-rotate-right"></i>
+                                            </button>
+                                        </td>
+
+                                        <!-- Name & Type -->
+                                        <td style="padding: 16px; vertical-align: top;">
+                                            <div style="font-weight: 700; color: white; display: flex; align-items: center; gap: 8px;">
+                                                <%= s.name %>
+                                                <% if (!s.is_active) { %>
+                                                    <span style="font-size: 10px; background: rgba(239, 68, 68, 0.2); color: #ef4444; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Inaktiv</span>
+                                                <% } %>
+                                            </div>
+                                            <div style="font-size: 12px; color: var(--accent-color); margin-top: 2px;">
+                                                <i class="fa-solid fa-gamepad"></i> <%= s.game_type %>
+                                            </div>
+                                            <% if (s.description) { %>
+                                                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; max-width: 300px;">
+                                                    <%= s.description %>
+                                                </div>
+                                            <% } %>
+                                            <% if (s.additional_info) { %>
+                                                <div style="font-size: 11px; color: #38bdf8; margin-top: 4px;">
+                                                    <i class="fa-solid fa-info-circle"></i> <%= s.additional_info %>
+                                                </div>
+                                            <% } %>
+                                        </td>
+
+                                        <!-- Address -->
+                                        <td style="padding: 16px; vertical-align: top; white-space: nowrap;">
+                                            <code style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; color: #38bdf8; font-size: 13px;">
+                                                <%= fullAddr %>
+                                            </code>
+                                        </td>
+
+                                        <!-- Expiration -->
+                                        <td style="padding: 16px; vertical-align: top; white-space: nowrap;">
+                                            <div style="font-weight: 600; font-size: 13px; color: <%= exp.color %>;">
+                                                <%= exp.shortText %>
+                                            </div>
+                                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                                <%= exp.dateFormatted %>
+                                            </div>
+                                        </td>
+
+                                        <!-- Password -->
+                                        <td style="padding: 16px; vertical-align: top; white-space: nowrap; font-size: 13px;">
+                                            <% if (s.password && s.password.trim().length > 0) { %>
+                                                <span style="color: #fb923c; font-family: monospace;"><%= s.password %></span>
+                                            <% } else { %>
+                                                <span style="color: var(--text-muted); font-size: 12px;">Kein Passwort</span>
+                                            <% } %>
+                                        </td>
+
+                                        <!-- Actions -->
+                                        <td style="padding: 16px; text-align: right; vertical-align: top; white-space: nowrap;">
+                                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                                <!-- Toggle Active -->
+                                                <form action="/server-settings/toggle" method="POST" style="display: inline;">
+                                                    <input type="hidden" name="id" value="<%= s.id %>">
+                                                    <button type="submit" class="btn btn-secondary" style="padding: 8px 12px; font-size: 12px; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); border-radius: 8px; color: <%= s.is_active ? '#22c55e' : '#ef4444' %>; cursor: pointer;" title="<%= s.is_active ? 'Server deaktivieren' : 'Server aktivieren' %>">
+                                                        <i class="fa-solid <%= s.is_active ? 'fa-eye' : 'fa-eye-slash' %>"></i>
+                                                    </button>
+                                                </form>
+
+                                                <!-- Edit Button -->
+                                                <button type="button" class="btn btn-secondary" onclick="openEditModal(<%= JSON.stringify(s) %>)" style="padding: 8px 12px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); border-radius: 8px; color: white; cursor: pointer;">
+                                                    <i class="fa-solid fa-pen-to-square"></i> Bearbeiten
+                                                </button>
+
+                                                <!-- Delete Button -->
+                                                <form action="/server-settings/delete" method="POST" onsubmit="return confirm('Möchtest du diesen Gameserver wirklich löschen?');" style="display: inline;">
+                                                    <input type="hidden" name="id" value="<%= s.id %>">
+                                                    <button type="submit" class="btn btn-danger" style="padding: 8px 12px; background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: #f87171; border-radius: 8px; cursor: pointer;" title="Löschen">
+                                                        <i class="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 40px; color: var(--text-muted);">
+                                        Keine Gameserver eingetragen. Füge oben einen neuen Server hinzu!
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+        <%- include('partials/footer') %>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 999; justify-content: center; align-items: center; backdrop-filter: blur(6px); padding: 20px;">
+        <div style="background: #1e293b; border: 1px solid var(--glass-border); border-radius: 16px; padding: 28px; max-width: 650px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 18px; color: white;"><i class="fa-solid fa-pen-to-square" style="color: var(--accent-color); margin-right: 8px;"></i> Gameserver bearbeiten</h3>
+                <button type="button" onclick="closeEditModal()" style="background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+
+            <form action="/server-settings/edit" method="POST">
+                <input type="hidden" id="edit-id" name="id">
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-name" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Server Name *</label>
+                        <input type="text" id="edit-name" name="name" class="form-control" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-game" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Spiel / Type *</label>
+                        <input type="text" id="edit-game" name="game_type" list="games-list" class="form-control" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-host" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Hostname / Domain / IP *</label>
+                        <input type="text" id="edit-host" name="host" class="form-control" required style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-port" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Port (Optional)</label>
+                        <input type="number" id="edit-port" name="port" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-pwd" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Passwort (Optional)</label>
+                        <input type="text" id="edit-pwd" name="password" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                    </div>
+                </div>
+
+                <!-- Ablaufzeit Bearbeitung -->
+                <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <label style="font-weight: 600; font-size: 13px; color: white; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-regular fa-clock" style="color: #38bdf8;"></i> Ablaufzeit / Laufzeit
+                        </label>
+                        <label style="font-size: 13px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                            <input type="checkbox" id="edit-permanent" name="is_permanent" value="1" onchange="toggleEditExpiration(this.checked)">
+                            Dauerhaft aktiv / Keine Ablaufzeit
+                        </label>
+                    </div>
+                    <div id="edit-expires-wrapper" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Ablaufdatum</label>
+                            <input type="date" id="edit-expires-date" name="expires_date" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Uhrzeit</label>
+                            <input type="time" id="edit-expires-time" name="expires_time" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label" for="edit-desc" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">Beschreibung</label>
+                    <textarea id="edit-desc" name="description" class="form-control" rows="2" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white; resize: vertical;"></textarea>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label class="form-label" for="edit-info" style="font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: var(--text-main);">
+                        Sonstiges & Setup-Hinweise
+                    </label>
+                    <input type="text" id="edit-info" name="additional_info" class="form-control" style="width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.25); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label style="font-size: 13px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="edit-active" name="is_active" value="1">
+                        Öffentlich sichtbar auf <code>/server</code>
+                    </label>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn btn-outline" onclick="closeEditModal()" style="padding: 10px 20px; border: 1px solid var(--glass-border); background: transparent; color: white; border-radius: 8px; cursor: pointer;">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 10px 20px; display: inline-flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-check"></i> Änderungen speichern
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function toggleAddExpiration(isPermanent) {
+            const wrapper = document.getElementById('add-expires-wrapper');
+            wrapper.style.display = isPermanent ? 'none' : 'grid';
+        }
+
+        function toggleEditExpiration(isPermanent) {
+            const wrapper = document.getElementById('edit-expires-wrapper');
+            wrapper.style.display = isPermanent ? 'none' : 'grid';
+        }
+
+        function openEditModal(server) {
+            document.getElementById('edit-id').value = server.id;
+            document.getElementById('edit-name').value = server.name;
+            document.getElementById('edit-game').value = server.game_type;
+            document.getElementById('edit-host').value = server.host;
+            document.getElementById('edit-port').value = server.port || '';
+            document.getElementById('edit-pwd').value = server.password || '';
+            document.getElementById('edit-desc').value = server.description || '';
+            document.getElementById('edit-info').value = server.additional_info || '';
+            document.getElementById('edit-active').checked = Boolean(server.is_active);
+
+            const permanentCheckbox = document.getElementById('edit-permanent');
+            const dateInput = document.getElementById('edit-expires-date');
+            const timeInput = document.getElementById('edit-expires-time');
+
+            if (!server.expires_at || server.expires_at <= 0) {
+                permanentCheckbox.checked = true;
+                dateInput.value = '';
+                timeInput.value = '';
+                toggleEditExpiration(true);
+            } else {
+                permanentCheckbox.checked = false;
+                const d = new Date(server.expires_at);
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                dateInput.value = `${yyyy}-${mm}-${dd}`;
+                timeInput.value = `${hh}:${min}`;
+                toggleEditExpiration(false);
+            }
+
+            document.getElementById('editModal').style.display = 'flex';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('editModal');
+            if (event.target === modal) {
+                closeEditModal();
+            }
+        };
+
+        // Live test ping in admin table
+        function testPing(serverId, btnElement) {
+            const icon = btnElement.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-rotate-right fa-spin';
+
+            fetch(`/api/server-status/${serverId}?refresh=1`)
+                .then(res => res.json())
+                .then(data => {
+                    if (icon) icon.className = 'fa-solid fa-rotate-right';
+                    const statusDiv = document.getElementById(`admin-status-${serverId}`);
+                    if (!statusDiv) return;
+
+                    if (data.online) {
+                        statusDiv.style.background = 'rgba(34, 197, 94, 0.15)';
+                        statusDiv.style.color = '#22c55e';
+                        statusDiv.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+                        statusDiv.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 8px;"></i> <span>Online ${data.latency ? '(' + data.latency + 'ms)' : ''}</span>`;
+                    } else {
+                        statusDiv.style.background = 'rgba(239, 68, 68, 0.15)';
+                        statusDiv.style.color = '#ef4444';
+                        statusDiv.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        statusDiv.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 8px;"></i> <span>Offline</span>`;
+                    }
+                })
+                .catch(err => {
+                    if (icon) icon.className = 'fa-solid fa-rotate-right';
+                    console.error('Fehler:', err);
+                });
+        }
+    </script>
+</body>
+</html>

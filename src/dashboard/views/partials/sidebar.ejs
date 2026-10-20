@@ -46,6 +46,10 @@
                 <i class="fa-solid fa-handshake" style="color: #3b82f6;"></i>
                 <span>Partner</span>
             </a>
+            <a href="/server-settings" class="nav-item <%= (locals.currentPath === '/server-settings' || locals.currentPath === '/dashboard/server-settings') ? 'active' : '' %>" style="border-left: 2px solid #f97316; border-radius: 0 8px 8px 0;">
+                <i class="fa-solid fa-server" style="color: #f97316;"></i>
+                <span>Gameserver</span>
+            </a>
             <% if (user.isOwner) { %>
                 <a href="/dashboard/db" class="nav-item <%= locals.currentPath === '/dashboard/db' ? 'active' : '' %>" style="border-left: 2px solid var(--danger); border-radius: 0 8px 8px 0;">
                     <i class="fa-solid fa-database" style="color: var(--danger);"></i>
