@@ -135,8 +135,12 @@ export function startDashboard(client) {
       const enrichedServers = await Promise.all(
         servers.map(async (s) => {
           const status = await checkServerStatus(s);
+          if (s.id) {
+            await db.recordServerStatus(s.id, status.online, status.latency);
+          }
           const expiration = getExpirationInfo(s.expires_at);
-          return { ...s, status, expiration };
+          const uptimeHistory = await db.getServerUptimeHistory(s.id, 24);
+          return { ...s, status, expiration, uptimeHistory };
         })
       );
       res.render('servers_public', { servers: enrichedServers });
@@ -158,11 +162,28 @@ export function startDashboard(client) {
       if (!server) return res.status(404).json({ error: 'Server nicht gefunden' });
       const forceRefresh = req.query.refresh === '1';
       const status = await checkServerStatus(server, forceRefresh);
-      res.json(status);
+      if (server.id) {
+        await db.recordServerStatus(server.id, status.online, status.latency);
+      }
+      const uptimeHistory = await db.getServerUptimeHistory(server.id, 24);
+      res.json({ ...status, uptimeHistory });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
   });
+
+  // Background interval: Keep uptime history updated every 5 minutes
+  setInterval(async () => {
+    try {
+      const activeServers = await db.getAllServers(true);
+      for (const s of activeServers) {
+        const res = await checkServerStatus(s, true);
+        if (s.id) {
+          await db.recordServerStatus(s.id, res.online, res.latency);
+        }
+      }
+    } catch (e) {}
+  }, 5 * 60 * 1000);
 
   app.get('/auth/discord', (req, res) => {
     const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=identify`;

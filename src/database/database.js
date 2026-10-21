@@ -184,6 +184,15 @@ class Database {
         sort_order INTEGER DEFAULT 0,
         createdAt INTEGER
       );
+
+      CREATE TABLE IF NOT EXISTS server_status_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        server_id INTEGER,
+        online INTEGER,
+        latency INTEGER,
+        checked_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_status_logs_server_time ON server_status_logs(server_id, checked_at);
     `);
 
     try {
@@ -905,6 +914,109 @@ class Database {
   async deleteServer(id) {
     const db = await this.dbPromise;
     await db.run('DELETE FROM community_servers WHERE id = ?', [id]);
+    await db.run('DELETE FROM server_status_logs WHERE server_id = ?', [id]);
+  }
+
+  async recordServerStatus(serverId, online, latency) {
+    try {
+      const db = await this.dbPromise;
+      const now = Date.now();
+      await db.run(
+        'INSERT INTO server_status_logs (server_id, online, latency, checked_at) VALUES (?, ?, ?, ?)',
+        [serverId, online ? 1 : 0, latency || null, now]
+      );
+      // Clean up logs older than 1 day (24 hours) as requested
+      const oneDayAgo = now - 24 * 60 * 60 * 1000;
+      await db.run('DELETE FROM server_status_logs WHERE checked_at < ?', [oneDayAgo]);
+    } catch (e) {
+      console.error('Fehler beim Speichern des Server-Status-Logs:', e);
+    }
+  }
+
+  async getServerUptimeHistory(serverId, hours = 24) {
+    const db = await this.dbPromise;
+    const server = await this.getServer(serverId);
+    const now = Date.now();
+    const msPerHour = 60 * 60 * 1000;
+    const since = now - hours * msPerHour;
+
+    const logs = await db.all(
+      'SELECT online, latency, checked_at FROM server_status_logs WHERE server_id = ? AND checked_at >= ? ORDER BY checked_at ASC',
+      [serverId, since]
+    );
+
+    const createdAt = server?.createdAt || (now - 24 * msPerHour);
+    const bars = [];
+    let totalOnlineWeight = 0;
+    let totalTrackedHours = 0;
+    let totalLatency = 0;
+    let countLatency = 0;
+
+    for (let i = hours - 1; i >= 0; i--) {
+      const slotStartMs = now - (i + 1) * msPerHour;
+      const slotEndMs = now - i * msPerHour;
+      const slotEndDate = new Date(slotEndMs);
+
+      const timeFormatted = slotEndDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      const relLabel = i === 0 ? 'Aktuelle Stunde' : `Vor ${i} ${i === 1 ? 'Stunde' : 'Stunden'}`;
+
+      const existed = createdAt <= slotEndMs;
+      const slotLogs = logs.filter(l => l.checked_at >= slotStartMs && l.checked_at <= slotEndMs);
+
+      if (!existed) {
+        bars.push({
+          time: timeFormatted,
+          percent: null,
+          status: 'none',
+          label: `${relLabel} (${timeFormatted} Uhr): Vor Servereintragung`
+        });
+      } else if (slotLogs.length === 0) {
+        // Existed, server running normally
+        bars.push({
+          time: timeFormatted,
+          percent: 100,
+          status: 'operational',
+          label: `${relLabel} (${timeFormatted} Uhr): 100% Verfügbarkeit`
+        });
+        totalOnlineWeight += 100;
+        totalTrackedHours++;
+      } else {
+        const onlineCount = slotLogs.filter(l => l.online === 1).length;
+        const percent = Math.round((onlineCount / slotLogs.length) * 100);
+        let status = 'operational';
+        if (percent < 90) status = 'down';
+        else if (percent < 99) status = 'degraded';
+
+        const latencies = slotLogs.filter(l => l.latency && l.latency > 0);
+        const slotAvgLatency = latencies.length > 0
+          ? Math.round(latencies.reduce((a, b) => a + b.latency, 0) / latencies.length)
+          : null;
+
+        if (slotAvgLatency) {
+          totalLatency += slotAvgLatency;
+          countLatency++;
+        }
+
+        bars.push({
+          time: timeFormatted,
+          percent,
+          status,
+          latency: slotAvgLatency,
+          label: `${relLabel} (${timeFormatted} Uhr): ${percent}% Verfügbarkeit${slotAvgLatency ? ` (Ø ${slotAvgLatency}ms)` : ''}`
+        });
+        totalOnlineWeight += percent;
+        totalTrackedHours++;
+      }
+    }
+
+    const overallPercent = totalTrackedHours > 0 ? (totalOnlineWeight / totalTrackedHours).toFixed(1) : '100.0';
+    const avgLatency = countLatency > 0 ? Math.round(totalLatency / countLatency) : null;
+
+    return {
+      bars,
+      overallPercent: parseFloat(overallPercent),
+      avgLatency
+    };
   }
 }
 

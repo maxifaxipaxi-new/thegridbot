@@ -170,6 +170,51 @@ export function pingA2s(host, port, timeout = 1200) {
 }
 
 /**
+ * Query Steam / Source A2S across potential query ports concurrently
+ * Handles Nitrado offsets (+1, +20 for Wreckfest, +10), standard Steam ports (27015, 27016 for ETS2, 27017)
+ */
+export function pingA2sSmart(host, basePort, timeout = 1500) {
+  const portsToTry = new Set();
+  const numPort = basePort ? parseInt(basePort, 10) : null;
+  if (numPort && !isNaN(numPort) && numPort > 0) {
+    portsToTry.add(numPort);
+    portsToTry.add(numPort + 1);  // Standard Nitrado query port
+    portsToTry.add(numPort + 20); // Nitrado Wreckfest offset
+    portsToTry.add(numPort + 10);
+    if (numPort > 1) portsToTry.add(numPort - 1);
+  }
+  // Common Steam query ports (e.g. 27016 used by Euro Truck Simulator 2 dedicated server)
+  portsToTry.add(27015);
+  portsToTry.add(27016);
+  portsToTry.add(27017);
+
+  const ports = Array.from(portsToTry);
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    let pending = ports.length;
+
+    ports.forEach(p => {
+      pingA2s(host, p, timeout).then(res => {
+        if (res.online && !resolved) {
+          resolved = true;
+          return resolve(res);
+        }
+        pending--;
+        if (pending === 0 && !resolved) {
+          resolve({ online: false, latency: null });
+        }
+      }).catch(() => {
+        pending--;
+        if (pending === 0 && !resolved) {
+          resolve({ online: false, latency: null });
+        }
+      });
+    });
+  });
+}
+
+/**
  * Ping via ICMP as reliable fallback for hosting providers with UDP query filtering
  */
 export function pingIcmp(host) {
@@ -295,12 +340,19 @@ export function pingMinecraft(host, port = 25565, timeout = 3000) {
         if (received.length >= offset + strLen.value) {
           const jsonStr = received.subarray(offset, offset + strLen.value).toString('utf8');
           const data = JSON.parse(jsonStr);
+          const sample = Array.isArray(data.players?.sample)
+            ? data.players.sample.map(p => ({
+                id: p.id || '',
+                name: p.name || 'Unbekannt'
+              }))
+            : [];
           finish({
             online: true,
             latency,
             players: {
               online: Number(data.players?.online ?? 0),
-              max: Number(data.players?.max ?? 0)
+              max: Number(data.players?.max ?? 0),
+              sample
             },
             version: data.version?.name || null
           });
@@ -425,36 +477,15 @@ export async function checkServerStatus(server, forceRefresh = false) {
       statusResult = await pingMinecraft(host, port, 3000);
     }
   } else {
-    // 1. Try TCP socket ping
-    const tcpResult = await pingTcp(host, port, 1200);
+    // 1. Try TCP socket ping first (fast for TCP games)
+    const tcpResult = await pingTcp(host, port, 1000);
     if (tcpResult.online) {
       statusResult = tcpResult;
     } else {
-      // 2. Try UDP/A2S query on port and offsets for games that use Steam / Source
-      const isSourceOrUdp = [
-        'wreckfest', 'valheim', 'palworld', 'cs2', 'counter-strike', 'rust', 'ark',
-        'enshrouded', '7 days to die', 'gmod', 'tf2', 'team fortress', 'terraria',
-        'assetto corsa', 'project zomboid'
-      ].some(t => lowerType.includes(t));
-
-      if (isSourceOrUdp) {
-        // Try configured port
-        const a2s1 = await pingA2s(host, port, 800);
-        if (a2s1.online) {
-          statusResult = a2s1;
-        } else {
-          // Try Nitrado query port offset (port + 1)
-          const a2s2 = await pingA2s(host, port + 1, 800);
-          if (a2s2.online) {
-            statusResult = a2s2;
-          } else if (port > 1) {
-            // Try port - 1
-            const a2s3 = await pingA2s(host, port - 1, 800);
-            if (a2s3.online) {
-              statusResult = a2s3;
-            }
-          }
-        }
+      // 2. Try Steam / Source / UDP query with smart port detection (supports Wreckfest +20, ETS2 27016, Nitrado offsets, etc.)
+      const a2sResult = await pingA2sSmart(host, port, 1500);
+      if (a2sResult.online) {
+        statusResult = a2sResult;
       }
     }
   }
