@@ -115,7 +115,7 @@ export function pingA2s(host, port, timeout = 1200) {
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
-        try { client.close(); } catch (e) {}
+        try { client.close(); } catch (e) { }
         resolve({ online: false, error: 'Timeout', latency: null });
       }
     }, timeout);
@@ -134,7 +134,7 @@ export function pingA2s(host, port, timeout = 1200) {
         const resend = Buffer.concat([query, challenge]);
         try {
           client.send(resend, 0, resend.length, port, host);
-        } catch (e) {}
+        } catch (e) { }
         return;
       }
 
@@ -142,7 +142,7 @@ export function pingA2s(host, port, timeout = 1200) {
         resolved = true;
         clearTimeout(timer);
         const latency = Math.max(1, Date.now() - start);
-        try { client.close(); } catch (e) {}
+        try { client.close(); } catch (e) { }
         resolve({ online: true, latency });
       }
     });
@@ -151,7 +151,7 @@ export function pingA2s(host, port, timeout = 1200) {
       if (!resolved) {
         resolved = true;
         clearTimeout(timer);
-        try { client.close(); } catch (e) {}
+        try { client.close(); } catch (e) { }
         resolve({ online: false, error: err.code || err.message, latency: null });
       }
     });
@@ -162,7 +162,7 @@ export function pingA2s(host, port, timeout = 1200) {
       if (!resolved) {
         resolved = true;
         clearTimeout(timer);
-        try { client.close(); } catch (e) {}
+        try { client.close(); } catch (e) { }
         resolve({ online: false, error: err.message, latency: null });
       }
     }
@@ -199,6 +199,207 @@ export function pingIcmp(host) {
 }
 
 /**
+ * Helper to write Minecraft VarInt
+ */
+function writeVarInt(value) {
+  const bytes = [];
+  while (true) {
+    if ((value & ~0x7F) === 0) {
+      bytes.push(value);
+      return Buffer.from(bytes);
+    }
+    bytes.push((value & 0x7F) | 0x80);
+    value >>>= 7;
+  }
+}
+
+/**
+ * Helper to read Minecraft VarInt
+ */
+function readVarInt(buffer, offset = 0) {
+  let result = 0;
+  let numRead = 0;
+  let b;
+  do {
+    if (offset + numRead >= buffer.length) return null;
+    b = buffer[offset + numRead];
+    result |= (b & 0x7F) << (7 * numRead);
+    numRead++;
+    if (numRead > 5) return null;
+  } while ((b & 0x80) !== 0);
+  return { value: result, length: numRead };
+}
+
+/**
+ * Ping Minecraft Java Edition via Server List Ping (SLP) over TCP (gameport)
+ */
+export function pingMinecraft(host, port = 25565, timeout = 3000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const socket = new net.Socket();
+    let resolved = false;
+    let received = Buffer.alloc(0);
+
+    const finish = (res) => {
+      if (!resolved) {
+        resolved = true;
+        socket.removeAllListeners();
+        socket.destroy();
+        resolve(res);
+      }
+    };
+
+    socket.setTimeout(timeout);
+
+    socket.on('connect', () => {
+      try {
+        const hostBuf = Buffer.from(host, 'utf8');
+        const protoVer = writeVarInt(765);
+        const hostLen = writeVarInt(hostBuf.length);
+        const portBuf = Buffer.alloc(2);
+        portBuf.writeUInt16BE(port);
+        const nextState = writeVarInt(1); // 1 = status
+
+        const payload = Buffer.concat([writeVarInt(0), protoVer, hostLen, hostBuf, portBuf, nextState]);
+        const handshake = Buffer.concat([writeVarInt(payload.length), payload]);
+        const statusReq = Buffer.from([0x01, 0x00]);
+
+        socket.write(Buffer.concat([handshake, statusReq]));
+      } catch (e) {
+        finish({ online: false, latency: null, players: null, error: e.message });
+      }
+    });
+
+    socket.on('data', (chunk) => {
+      received = Buffer.concat([received, chunk]);
+      const latency = Math.max(1, Date.now() - start);
+
+      try {
+        let offset = 0;
+        const packetLen = readVarInt(received, offset);
+        if (!packetLen) return;
+        offset += packetLen.length;
+
+        if (received.length < offset + packetLen.value) {
+          return; // need more data
+        }
+
+        const packetId = readVarInt(received, offset);
+        if (!packetId) return;
+        offset += packetId.length;
+
+        const strLen = readVarInt(received, offset);
+        if (!strLen) return;
+        offset += strLen.length;
+
+        if (received.length >= offset + strLen.value) {
+          const jsonStr = received.subarray(offset, offset + strLen.value).toString('utf8');
+          const data = JSON.parse(jsonStr);
+          finish({
+            online: true,
+            latency,
+            players: {
+              online: Number(data.players?.online ?? 0),
+              max: Number(data.players?.max ?? 0)
+            },
+            version: data.version?.name || null
+          });
+        }
+      } catch (err) { }
+    });
+
+    socket.on('timeout', () => finish({ online: false, latency: null, players: null, error: 'Timeout' }));
+    socket.on('error', (err) => finish({ online: false, latency: null, players: null, error: err.code || err.message }));
+    socket.on('close', () => finish({ online: false, latency: null, players: null, error: 'Closed' }));
+
+    try {
+      socket.connect(port, host);
+    } catch (err) {
+      finish({ online: false, latency: null, players: null, error: err.message });
+    }
+  });
+}
+
+/**
+ * Ping Minecraft Bedrock Edition via RakNet UDP (port 19132)
+ */
+export function pingMinecraftBedrock(host, port = 19132, timeout = 2000) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    let client;
+    try {
+      client = dgram.createSocket('udp4');
+    } catch (e) {
+      return resolve({ online: false, latency: null, players: null, error: e.message });
+    }
+
+    let resolved = false;
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        try { client.close(); } catch (e) { }
+        resolve({ online: false, latency: null, players: null, error: 'Timeout' });
+      }
+    }, timeout);
+
+    const magic = Buffer.from('00ffff00fefefefefdfdfdfd12345678', 'hex');
+    const packet = Buffer.alloc(33);
+    packet.writeUInt8(0x01, 0); // ID_UNCONNECTED_PING
+    packet.writeBigInt64BE(BigInt(Date.now()), 1);
+    magic.copy(packet, 9);
+    packet.writeBigInt64BE(BigInt(2), 25);
+
+    client.on('message', (msg) => {
+      if (msg[0] === 0x1c && !resolved) { // ID_UNCONNECTED_PONG
+        resolved = true;
+        clearTimeout(timer);
+        const latency = Math.max(1, Date.now() - start);
+        try {
+          const strLen = msg.readUInt16BE(33);
+          const dataStr = msg.subarray(35, 35 + strLen).toString('utf8');
+          const parts = dataStr.split(';');
+          const online = parts[4] ? parseInt(parts[4], 10) : 0;
+          const max = parts[5] ? parseInt(parts[5], 10) : 0;
+          client.close();
+          resolve({
+            online: true,
+            latency,
+            players: {
+              online: isNaN(online) ? 0 : online,
+              max: isNaN(max) ? 0 : max
+            },
+            version: parts[3] || null
+          });
+        } catch (e) {
+          try { client.close(); } catch (err) { }
+          resolve({ online: true, latency, players: null });
+        }
+      }
+    });
+
+    client.on('error', (err) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        try { client.close(); } catch (e) { }
+        resolve({ online: false, latency: null, players: null, error: err.code || err.message });
+      }
+    });
+
+    try {
+      client.send(packet, 0, packet.length, port, host);
+    } catch (e) {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        try { client.close(); } catch (err) { }
+        resolve({ online: false, latency: null, players: null, error: e.message });
+      }
+    }
+  });
+}
+
+/**
  * Check game server status with smart protocol fallback & caching
  */
 export async function checkServerStatus(server, forceRefresh = false) {
@@ -212,53 +413,57 @@ export async function checkServerStatus(server, forceRefresh = false) {
 
   const { host, port } = parseServerAddress(server.host, server.port, server.game_type);
   const lowerType = (server.game_type || '').toLowerCase();
+  const isMinecraft = lowerType.includes('minecraft');
 
-  let statusResult = { online: false, latency: null };
+  let statusResult = { online: false, latency: null, players: null, version: null };
 
-  // 1. Try TCP socket ping
-  const tcpResult = await pingTcp(host, port, 1200);
-  if (tcpResult.online) {
-    statusResult = tcpResult;
+  if (isMinecraft) {
+    const isBedrock = lowerType.includes('bedrock') || port === 19132;
+    if (isBedrock) {
+      statusResult = await pingMinecraftBedrock(host, port, 1800);
+    } else {
+      statusResult = await pingMinecraft(host, port, 3000);
+    }
   } else {
-    // 2. Try UDP/A2S query on port and offsets for games that use Steam / Source
-    const isSourceOrUdp = [
-      'wreckfest', 'valheim', 'palworld', 'cs2', 'counter-strike', 'rust', 'ark',
-      'enshrouded', '7 days to die', 'gmod', 'tf2', 'team fortress', 'terraria',
-      'assetto corsa', 'project zomboid'
-    ].some(t => lowerType.includes(t));
+    // 1. Try TCP socket ping
+    const tcpResult = await pingTcp(host, port, 1200);
+    if (tcpResult.online) {
+      statusResult = tcpResult;
+    } else {
+      // 2. Try UDP/A2S query on port and offsets for games that use Steam / Source
+      const isSourceOrUdp = [
+        'wreckfest', 'valheim', 'palworld', 'cs2', 'counter-strike', 'rust', 'ark',
+        'enshrouded', '7 days to die', 'gmod', 'tf2', 'team fortress', 'terraria',
+        'assetto corsa', 'project zomboid'
+      ].some(t => lowerType.includes(t));
 
-    if (isSourceOrUdp) {
-      // Try configured port
-      const a2s1 = await pingA2s(host, port, 800);
-      if (a2s1.online) {
-        statusResult = a2s1;
-      } else {
-        // Try Nitrado query port offset (port + 1)
-        const a2s2 = await pingA2s(host, port + 1, 800);
-        if (a2s2.online) {
-          statusResult = a2s2;
-        } else if (port > 1) {
-          // Try port - 1
-          const a2s3 = await pingA2s(host, port - 1, 800);
-          if (a2s3.online) {
-            statusResult = a2s3;
+      if (isSourceOrUdp) {
+        // Try configured port
+        const a2s1 = await pingA2s(host, port, 800);
+        if (a2s1.online) {
+          statusResult = a2s1;
+        } else {
+          // Try Nitrado query port offset (port + 1)
+          const a2s2 = await pingA2s(host, port + 1, 800);
+          if (a2s2.online) {
+            statusResult = a2s2;
+          } else if (port > 1) {
+            // Try port - 1
+            const a2s3 = await pingA2s(host, port - 1, 800);
+            if (a2s3.online) {
+              statusResult = a2s3;
+            }
           }
         }
-      }
-    }
-
-    // 3. If still offline, try ICMP ping fallback (host is alive and reachable)
-    if (!statusResult.online) {
-      const icmpResult = await pingIcmp(host);
-      if (icmpResult.online) {
-        statusResult = icmpResult;
       }
     }
   }
 
   const finalData = {
-    online: statusResult.online,
+    online: !!statusResult.online,
     latency: statusResult.latency,
+    players: statusResult.players || null,
+    version: statusResult.version || null,
     host,
     port,
     checkedAt: Date.now()

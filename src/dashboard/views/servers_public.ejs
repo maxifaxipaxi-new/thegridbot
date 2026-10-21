@@ -376,6 +376,19 @@
             background: rgba(239, 68, 68, 0.1);
         }
 
+        .players-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+        }
+
         .status-dot {
             width: 8px;
             height: 8px;
@@ -811,12 +824,22 @@
                                     <i class="fa-solid fa-gamepad"></i> <%= s.game_type %>
                                 </span>
 
-                                <span class="status-badge <%= isOnline ? 'online' : 'offline' %>" id="status-badge-<%= s.id %>">
-                                    <span class="status-dot <%= isOnline ? 'pulse' : '' %>"></span>
-                                    <span class="status-text">
-                                        <%= isOnline ? `Online ${latency ? '(' + latency + ')' : ''}` : 'Offline' %>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <% const isMinecraft = (s.game_type || '').toLowerCase().includes('minecraft'); %>
+                                    <% if (isMinecraft) { %>
+                                        <span class="players-badge" id="players-badge-<%= s.id %>" style="<%= (isOnline && s.status && s.status.players) ? '' : 'display: none;' %>">
+                                            <i class="fa-solid fa-users"></i>
+                                            <span class="players-count"><%= (s.status && s.status.players) ? `${s.status.players.online}/${s.status.players.max}` : '0/0' %></span>
+                                        </span>
+                                    <% } %>
+
+                                    <span class="status-badge <%= isOnline ? 'online' : 'offline' %>" id="status-badge-<%= s.id %>">
+                                        <span class="status-dot <%= isOnline ? 'pulse' : '' %>"></span>
+                                        <span class="status-text">
+                                            <%= isOnline ? `Online ${latency ? '(' + latency + ')' : ''}` : 'Offline' %>
+                                        </span>
                                     </span>
-                                </span>
+                                </div>
                             </div>
 
                             <h2 class="server-title"><%= s.name %></h2>
@@ -969,20 +992,35 @@
                 .then(data => {
                     btnElement.classList.remove('spinning');
                     const badge = document.getElementById(`status-badge-${serverId}`);
-                    if (!badge) return;
+                    const playersBadge = document.getElementById(`players-badge-${serverId}`);
+                    const card = document.getElementById(`server-card-${serverId}`);
+                    const game = (card ? card.getAttribute('data-game') : '').toLowerCase();
+                    const isMinecraft = game.includes('minecraft');
 
-                    if (data.online) {
-                        badge.className = 'status-badge online';
-                        badge.innerHTML = `
-                            <span class="status-dot pulse"></span>
-                            <span class="status-text">Online ${data.latency ? '(' + data.latency + 'ms)' : ''}</span>
-                        `;
-                    } else {
-                        badge.className = 'status-badge offline';
-                        badge.innerHTML = `
-                            <span class="status-dot"></span>
-                            <span class="status-text">Offline</span>
-                        `;
+                    if (badge) {
+                        if (data.online) {
+                            badge.className = 'status-badge online';
+                            badge.innerHTML = `
+                                <span class="status-dot pulse"></span>
+                                <span class="status-text">Online ${data.latency ? '(' + data.latency + 'ms)' : ''}</span>
+                            `;
+                        } else {
+                            badge.className = 'status-badge offline';
+                            badge.innerHTML = `
+                                <span class="status-dot"></span>
+                                <span class="status-text">Offline</span>
+                            `;
+                        }
+                    }
+
+                    if (playersBadge) {
+                        if (isMinecraft && data.online && data.players) {
+                            playersBadge.style.display = 'inline-flex';
+                            const countSpan = playersBadge.querySelector('.players-count');
+                            if (countSpan) countSpan.innerText = `${data.players.online}/${data.players.max}`;
+                        } else {
+                            playersBadge.style.display = 'none';
+                        }
                     }
                 })
                 .catch(err => {

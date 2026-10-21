@@ -588,8 +588,13 @@ client.on('interactionCreate', async (interaction) => {
           ? `🔑 \`${s.password}\`` 
           : '🔓 *Kein Passwort*';
 
+        const isMinecraft = (s.game_type || '').toLowerCase().includes('minecraft');
+        const playersText = (isMinecraft && s.status.online && s.status.players)
+          ? `\n• **Spieler:** 👥 \`${s.status.players.online} / ${s.status.players.max}\``
+          : '';
+
         let entry = `### 🎮 ${s.name} (${s.game_type})\n` +
-          `• **Status:** ${statusText}\n` +
+          `• **Status:** ${statusText}${playersText}\n` +
           `• **Adresse:** \`${fullAddr}\`\n` +
           `• **Laufzeit:** ${s.expiration.text}\n` +
           `• **Passwort:** ${pwdText}`;

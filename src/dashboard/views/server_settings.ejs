@@ -169,9 +169,15 @@
                                                 <i class="fa-solid fa-circle" style="font-size: 8px;"></i>
                                                 <span><%= isOnline ? `Online ${latency}` : 'Offline' %></span>
                                             </div>
-                                            <button type="button" onclick="testPing(<%= s.id %>, this)" title="Status prüfen" style="margin-left: 6px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px;">
+                                            <button type="button" onclick="testPing(<%= s.id %>, this, '<%= (s.game_type || '').toLowerCase() %>')" title="Status prüfen" style="margin-left: 6px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px;">
                                                 <i class="fa-solid fa-rotate-right"></i>
                                             </button>
+                                            <% if ((s.game_type || '').toLowerCase().includes('minecraft')) { %>
+                                                <div id="admin-players-<%= s.id %>" style="font-size: 11px; color: #38bdf8; margin-top: 6px; display: <%= (isOnline && s.status && s.status.players) ? 'flex' : 'none' %>; align-items: center; gap: 5px;">
+                                                    <i class="fa-solid fa-users"></i>
+                                                    <span class="count"><%= (s.status && s.status.players) ? `${s.status.players.online}/${s.status.players.max} Spieler` : '' %></span>
+                                                </div>
+                                            <% } %>
                                         </td>
 
                                         <!-- Name & Type -->
@@ -413,7 +419,7 @@
         };
 
         // Live test ping in admin table
-        function testPing(serverId, btnElement) {
+        function testPing(serverId, btnElement, gameType = '') {
             const icon = btnElement.querySelector('i');
             if (icon) icon.className = 'fa-solid fa-rotate-right fa-spin';
 
@@ -422,6 +428,7 @@
                 .then(data => {
                     if (icon) icon.className = 'fa-solid fa-rotate-right';
                     const statusDiv = document.getElementById(`admin-status-${serverId}`);
+                    const playersDiv = document.getElementById(`admin-players-${serverId}`);
                     if (!statusDiv) return;
 
                     if (data.online) {
@@ -434,6 +441,17 @@
                         statusDiv.style.color = '#ef4444';
                         statusDiv.style.borderColor = 'rgba(239, 68, 68, 0.3)';
                         statusDiv.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 8px;"></i> <span>Offline</span>`;
+                    }
+
+                    if (playersDiv) {
+                        const isMinecraft = (gameType || '').includes('minecraft');
+                        if (isMinecraft && data.online && data.players) {
+                            playersDiv.style.display = 'flex';
+                            const countSpan = playersDiv.querySelector('.count');
+                            if (countSpan) countSpan.innerText = `${data.players.online}/${data.players.max} Spieler`;
+                        } else {
+                            playersDiv.style.display = 'none';
+                        }
                     }
                 })
                 .catch(err => {
